@@ -33,9 +33,9 @@ func TestResolveManagedDefaultAssetNames(t *testing.T) {
 		name   string
 	}{
 		{domain.Target{OS: "linux", Arch: "amd64"}, "CLIProxyAPI_7.2.92_linux_amd64.tar.gz"},
-		{domain.Target{OS: "linux", Arch: "arm64"}, "CLIProxyAPI_7.2.92_linux_arm64.tar.gz"},
+		{domain.Target{OS: "linux", Arch: "arm64"}, "CLIProxyAPI_7.2.92_linux_aarch64.tar.gz"},
 		{domain.Target{OS: "darwin", Arch: "amd64"}, "CLIProxyAPI_7.2.92_darwin_amd64.tar.gz"},
-		{domain.Target{OS: "darwin", Arch: "arm64"}, "CLIProxyAPI_7.2.92_darwin_arm64.tar.gz"},
+		{domain.Target{OS: "darwin", Arch: "arm64"}, "CLIProxyAPI_7.2.92_darwin_aarch64.tar.gz"},
 		{domain.Target{OS: "windows", Arch: "amd64"}, "CLIProxyAPI_7.2.92_windows_amd64.zip"},
 	}
 	for _, test := range tests {

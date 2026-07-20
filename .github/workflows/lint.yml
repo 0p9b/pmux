@@ -21,7 +21,7 @@ jobs:
       - name: Run Go linters and depguard
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.1.6
+          version: v2.12.2
           args: --timeout=5m
       - name: Check module graph
         run: go vet ./...

@@ -84,7 +84,12 @@ func (s *GitHubSource) Resolve(ctx context.Context, component update.Component, 
 	if s.Target.GOOS == "windows" {
 		ext = ".zip"
 	}
-	needle := "_" + s.Target.GOOS + "_" + s.Target.Arch + ext
+	arch := s.Target.Arch
+	if component == update.Proxy && arch == "arm64" {
+		// CLIProxyAPI release assets use aarch64, not arm64.
+		arch = "aarch64"
+	}
+	needle := "_" + s.Target.GOOS + "_" + arch + ext
 	var archiveName, archiveURL, sumsURL string
 	for _, asset := range payload.Assets {
 		switch {

@@ -32,7 +32,7 @@ jobs:
             extension: tar.gz
           - target: linux-arm64
             upstream-os: linux
-            upstream-arch: arm64
+            upstream-arch: aarch64
             extension: tar.gz
           - target: darwin-amd64
             upstream-os: darwin
@@ -40,7 +40,7 @@ jobs:
             extension: tar.gz
           - target: darwin-arm64
             upstream-os: darwin
-            upstream-arch: arm64
+            upstream-arch: aarch64
             extension: tar.gz
           - target: windows-amd64
             upstream-os: windows
@@ -100,12 +100,12 @@ jobs:
               if binary[:4] != b"\x7fELF":
                   raise SystemExit("expected ELF executable")
               machine = struct.unpack_from("<H", binary, 18)[0]
-              expected_machine = {"amd64": 62, "arm64": 183}[target_arch]
+              expected_machine = {"amd64": 62, "aarch64": 183}[target_arch]
           elif target_os == "darwin":
               if binary[:4] != b"\xcf\xfa\xed\xfe":
                   raise SystemExit("expected 64-bit little-endian Mach-O executable")
               machine = struct.unpack_from("<I", binary, 4)[0]
-              expected_machine = {"amd64": 0x01000007, "arm64": 0x0100000c}[target_arch]
+              expected_machine = {"amd64": 0x01000007, "aarch64": 0x0100000c}[target_arch]
           else:
               if binary[:2] != b"MZ":
                   raise SystemExit("expected PE executable")

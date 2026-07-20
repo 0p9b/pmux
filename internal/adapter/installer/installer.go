@@ -120,7 +120,7 @@ func AssetName(version string, target domain.Target) (string, error) {
 	if target.OS == "windows" && target.Arch != "amd64" {
 		return "", unsupportedTarget(target)
 	}
-	return fmt.Sprintf("CLIProxyAPI_%s_%s_%s.%s", version, target.OS, target.Arch, extension), nil
+	return fmt.Sprintf("CLIProxyAPI_%s_%s_%s.%s", version, target.OS, releaseArchToken(target.Arch), extension)
 }
 
 func unsupportedTarget(target domain.Target) error {
@@ -468,12 +468,28 @@ func parseAssetName(name string) (string, domain.Target, string, error) {
 	if len(parts) != 3 || !versionPattern.MatchString(parts[0]) {
 		return "", domain.Target{}, "", pmuxerr.New(pmuxerr.InstallIntegrityFailed, pmuxerr.Upstream, "release asset name is not recognized")
 	}
-	target := domain.Target{OS: parts[1], Arch: parts[2]}
+	target := domain.Target{OS: parts[1], Arch: parseReleaseArchToken(parts[2])}
 	expected, err := AssetName(parts[0], target)
 	if err != nil || expected != name {
 		return "", domain.Target{}, "", pmuxerr.New(pmuxerr.InstallIntegrityFailed, pmuxerr.Upstream, "release asset name is not a supported exact target asset")
 	}
 	return parts[0], target, format, nil
+}
+
+// releaseArchToken maps Go/runtime arch names onto CLIProxyAPI release tokens.
+// Upstream publishes arm64 assets as aarch64.
+func releaseArchToken(arch string) string {
+	if arch == "arm64" {
+		return "aarch64"
+	}
+	return arch
+}
+
+func parseReleaseArchToken(token string) string {
+	if token == "aarch64" {
+		return "arm64"
+	}
+	return token
 }
 
 func extractTarGZ(ctx context.Context, archivePath, executable, output string) error {
