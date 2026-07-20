@@ -175,8 +175,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 	if status.State != service.ServiceRunning {
-		if status.State == service.ServiceNotInstalled {
-			if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
+		if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
+			if !bootstrapAlreadyLoaded(err, out) {
 				return launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
 			}
 		}
@@ -225,8 +225,8 @@ func (m *Manager) Restart(ctx context.Context) (service.ServiceStatus, error) {
 			return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not restart the LaunchAgent")
 		}
 	} else {
-		if status.State == service.ServiceNotInstalled {
-			if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
+		if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
+			if !bootstrapAlreadyLoaded(err, out) {
 				return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
 			}
 		}
@@ -466,6 +466,14 @@ func parsePID(out []byte) int {
 	}
 	pid, _ := strconv.Atoi(string(match[1]))
 	return pid
+}
+
+func bootstrapAlreadyLoaded(err error, out []byte) bool {
+	if err == nil {
+		return false
+	}
+	joined := strings.ToLower(launchctlFailure(err, out).Error())
+	return strings.Contains(joined, "already") || strings.Contains(joined, "duplicate") || strings.Contains(joined, "exists")
 }
 
 func launchctlFailure(err error, out []byte) error {
