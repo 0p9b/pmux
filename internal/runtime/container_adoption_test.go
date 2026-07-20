@@ -82,10 +82,7 @@ func TestContainerAdoptionIsReadOnlyAndEveryMutationPathIsRefused(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots, err := loadRoots(platform)
-	if err != nil {
-		t.Fatal(err)
-	}
+	roots := testRoots(root)
 	store, err := state.New(state.Paths{
 		Config:  filepath.Join(roots.Config, "config.json"),
 		State:   filepath.Join(roots.State, "state.json"),
@@ -178,7 +175,7 @@ func TestContainerAdoptionIsReadOnlyAndEveryMutationPathIsRefused(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Path != configPath {
+	if normalizeTestPath(snapshot.Path) != normalizeTestPath(configPath) {
 		t.Fatalf("read-only config inspection returned %q", snapshot.Path)
 	}
 	if _, err := configuration.Plan(context.Background(), snapshot, []domainconfig.PatchOp{{Path: "port", Value: 9000}}); err == nil {

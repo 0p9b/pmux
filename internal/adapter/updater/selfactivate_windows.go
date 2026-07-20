@@ -4,16 +4,26 @@ package updater
 
 import (
 	"context"
+	"encoding/json"
 	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"syscall"
 
+	adapterfs "github.com/0p9b/pmux/internal/adapter/fs"
 	adapterplatform "github.com/0p9b/pmux/internal/adapter/platform"
 	"github.com/0p9b/pmux/internal/pmuxerr"
 	"golang.org/x/sys/windows"
 )
+
+func writeSelfUpdatePlan(path string, plan selfUpdatePlan) error {
+	payload, err := json.Marshal(plan)
+	if err != nil {
+		return err
+	}
+	return adapterfs.AtomicWritePrivate(path, append(payload, '\n'))
+}
 
 func (e *Engine) activateSelf(_ context.Context, result Result, current, candidate string, activeHash [32]byte, mode os.FileMode, currentVersion, nextVersion string) (Result, error) {
 	if err := e.stage(StageActivate); err != nil {

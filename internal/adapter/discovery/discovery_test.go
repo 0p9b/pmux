@@ -39,8 +39,21 @@ func TestDiscoveryIsReadOnlyForFilesAndProcesses(t *testing.T) {
 	}
 	beforeHash := sha256.Sum256(beforeBytes)
 
-	command := exec.Command(os.Args[0], "-test.run=TestDiscoveryIsReadOnlyForFilesAndProcesses")
-	command.Args[0] = "cli-proxy-api"
+	helper := os.Args[0]
+	if runtime.GOOS == "windows" {
+		helper = filepath.Join(root, "cli-proxy-api.exe")
+		body, err := os.ReadFile(os.Args[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(helper, body, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	command := exec.Command(helper, "-test.run=TestDiscoveryIsReadOnlyForFilesAndProcesses")
+	if runtime.GOOS != "windows" {
+		command.Args[0] = "cli-proxy-api"
+	}
 	command.Args = append(command.Args, "--", "-config", config)
 	command.Env = append(os.Environ(), "PMUX_DISCOVERY_HELPER=1")
 	if err := command.Start(); err != nil {

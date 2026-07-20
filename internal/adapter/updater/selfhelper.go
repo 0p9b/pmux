@@ -182,7 +182,6 @@ func verifyHelperFingerprint(ops selfHelperOps, path, expected, label string) er
 	}
 	return nil
 }
-
 func writeSelfUpdateStatus(path string, status selfUpdateStatus) error {
 	payload, err := json.Marshal(status)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -546,8 +547,11 @@ func TestServiceLogsFilterBoundRedactOutputAndTerminalEvent(t *testing.T) {
 		t.Fatalf("unsafe or unbounded output (leaked %q): %s", leaked, body)
 	}
 	info, err := os.Stat(output)
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("output permissions=%v err=%v", info.Mode().Perm(), err)
+	if err != nil {
+		t.Fatalf("output stat: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("output permissions=%v", info.Mode().Perm())
 	}
 }
 

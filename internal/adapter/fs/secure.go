@@ -15,10 +15,7 @@ func EnsurePrivateDir(path string) error {
 	if err := os.MkdirAll(path, 0o700); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not create private directory")
 	}
-	if err := os.Chmod(path, 0o700); err != nil {
-		return pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "could not protect private directory")
-	}
-	return nil
+	return protectPrivatePath(path, true)
 }
 
 // AtomicWritePrivate durably replaces path with owner-only payload bytes. The
@@ -41,8 +38,8 @@ func AtomicWritePrivate(path string, payload []byte) error {
 			_ = os.Remove(name)
 		}
 	}()
-	if err := tmp.Chmod(0o600); err != nil {
-		return pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "could not protect private temporary file")
+	if err := protectPrivatePath(name, false); err != nil {
+		return err
 	}
 	if _, err := io.Copy(tmp, bytes.NewReader(payload)); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not write private temporary file")
@@ -55,6 +52,9 @@ func AtomicWritePrivate(path string, payload []byte) error {
 	}
 	if err := replaceFile(name, path); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigMutationConflict, pmuxerr.Environment, "could not atomically replace private file")
+	}
+	if err := protectPrivatePath(path, false); err != nil {
+		return err
 	}
 	if err := SyncDirectory(dir); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not flush private directory")
@@ -83,8 +83,8 @@ func WritePrivateExclusive(path string, payload []byte) error {
 			_ = os.Remove(path)
 		}
 	}()
-	if err := file.Chmod(0o600); err != nil {
-		return pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "could not protect private file")
+	if err := protectPrivatePath(path, false); err != nil {
+		return err
 	}
 	if _, err := file.Write(payload); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not write private file")
@@ -94,6 +94,9 @@ func WritePrivateExclusive(path string, payload []byte) error {
 	}
 	if err := file.Close(); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not close private file")
+	}
+	if err := protectPrivatePath(path, false); err != nil {
+		return err
 	}
 	if err := SyncDirectory(dir); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not flush private directory")
@@ -115,9 +118,9 @@ func AppendPrivate(path string, payload []byte) error {
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not open private append-only file")
 	}
-	if err := file.Chmod(0o600); err != nil {
+	if err := protectPrivatePath(path, false); err != nil {
 		_ = file.Close()
-		return pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "could not protect private append-only file")
+		return err
 	}
 	if _, err := file.Write(payload); err != nil {
 		_ = file.Close()

@@ -35,7 +35,10 @@ func TestServiceHostUsesAbsoluteConfigRuntimeAndScrubbedEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
-	want := []string{"-config", config, runtimeDir, "PGSTORE_URL="}
+	if len(lines) >= 3 {
+		lines[2] = normalizeTestPath(lines[2])
+	}
+	want := []string{"-config", config, normalizeTestPath(runtimeDir), "PGSTORE_URL="}
 	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("service host observation = %q, want %q", lines, want)
 	}

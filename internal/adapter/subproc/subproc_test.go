@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -147,7 +148,7 @@ func TestVersionProbeUsesGeneratedIsolatedState(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	binary := filepath.Join(root, "cli-proxy-api")
-	mustWrite(t, binary, "not actually executed", 0o700)
+	writeProbeBinary(t, binary)
 	userConfig := filepath.Join(root, "user-config.yaml")
 	mustWrite(t, userConfig, "secret-key: should-never-be-read", 0o600)
 	before, err := os.ReadFile(userConfig)
@@ -284,6 +285,26 @@ func TestProcessOutputRequiresSanitizerBeforeMirroring(t *testing.T) {
 	if strings.Contains(sanitized.String(), secret) || sanitized.String() != "token <redacted>\n" {
 		t.Fatalf("subprocess output was not safely mirrored: %q", sanitized.String())
 	}
+}
+
+func minimalPE() []byte {
+	body := make([]byte, 96)
+	copy(body[:2], []byte("MZ"))
+	const peOffset = 64
+	body[0x3c] = peOffset
+	copy(body[peOffset:peOffset+4], []byte{'P', 'E', 0, 0})
+	return body
+}
+
+func writeProbeBinary(t *testing.T, path string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		if err := os.WriteFile(path, minimalPE(), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	mustWrite(t, path, "not actually executed", 0o700)
 }
 
 func mustWrite(t *testing.T, path, body string, mode os.FileMode) {

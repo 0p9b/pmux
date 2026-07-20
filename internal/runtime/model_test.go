@@ -73,10 +73,7 @@ func TestNativeModelTesterRequiresLiveExactModelAndUsesLocalProxy(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots, err := loadRoots(platform)
-	if err != nil {
-		t.Fatal(err)
-	}
+	roots := testRoots(root)
 	store, err := state.New(state.Paths{Config: filepath.Join(roots.Config, "config.json"), State: filepath.Join(roots.State, "state.json"), Secrets: filepath.Join(roots.State, "secrets.json")})
 	if err != nil {
 		t.Fatal(err)

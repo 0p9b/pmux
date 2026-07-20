@@ -8,10 +8,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	adapterplatform "github.com/0p9b/pmux/internal/adapter/platform"
 	domainconfig "github.com/0p9b/pmux/internal/domain/config"
 	"github.com/0p9b/pmux/internal/pmuxerr"
 )
@@ -104,21 +106,36 @@ func TestManagedHardeningPreservesASTAndAppliesPrivately(t *testing.T) {
 	if got, want := filepath.Base(result.BackupPath), "config.yaml.20260720T141203Z."+shortSHA([]byte(original))+".bak"; got != want {
 		t.Fatalf("backup name = %q, want %q", got, want)
 	}
-	for _, privatePath := range []string{path, result.BackupPath} {
-		info, err := os.Stat(privatePath)
+	if runtime.GOOS != "windows" {
+		for _, privatePath := range []string{path, result.BackupPath} {
+			info, err := os.Stat(privatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := info.Mode().Perm(); got != 0o600 {
+				t.Errorf("%s mode = %o, want 600", privatePath, got)
+			}
+		}
+		backupInfo, err := os.Stat(backups)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := info.Mode().Perm(); got != 0o600 {
-			t.Errorf("%s mode = %o, want 600", privatePath, got)
+		if got := backupInfo.Mode().Perm(); got != 0o700 {
+			t.Errorf("backup directory mode = %o, want 700", got)
 		}
-	}
-	backupInfo, err := os.Stat(backups)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := backupInfo.Mode().Perm(); got != 0o700 {
-		t.Errorf("backup directory mode = %o, want 700", got)
+	} else {
+		platform, err := adapterplatform.New("")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, privatePath := range []string{path, result.BackupPath} {
+			if err := platform.VerifySecurePermissions(privatePath, false); err != nil {
+				t.Errorf("%s permissions: %v", privatePath, err)
+			}
+		}
+		if err := platform.VerifySecurePermissions(backups, true); err != nil {
+			t.Errorf("backup directory permissions: %v", err)
+		}
 	}
 	backup, err := os.ReadFile(result.BackupPath)
 	if err != nil {

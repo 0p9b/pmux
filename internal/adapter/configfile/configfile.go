@@ -12,11 +12,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	adapterfs "github.com/0p9b/pmux/internal/adapter/fs"
+	adapterplatform "github.com/0p9b/pmux/internal/adapter/platform"
 	domainconfig "github.com/0p9b/pmux/internal/domain/config"
 	"github.com/0p9b/pmux/internal/pmuxerr"
 	"github.com/0p9b/pmux/internal/redact"
@@ -297,8 +299,19 @@ func (a *Adapter) Validate(ctx context.Context, snapshot domainconfig.ConfigSnap
 			}
 		}
 	}
-	if info, err := os.Stat(snapshot.Path); err == nil && info.Mode().Perm()&0o077 != 0 {
-		out = append(out, domainconfig.Diagnostic{ID: "KEY-PERMS", Severity: "critical", Message: "config.yaml permissions are not private"})
+	if info, err := os.Stat(snapshot.Path); err == nil {
+		switch runtime.GOOS {
+		case "windows":
+			if platform, platformErr := adapterplatform.New(""); platformErr == nil {
+				if verifyErr := platform.VerifySecurePermissions(snapshot.Path, false); verifyErr != nil {
+					out = append(out, domainconfig.Diagnostic{ID: "KEY-PERMS", Severity: "critical", Message: "config.yaml permissions are not private"})
+				}
+			}
+		default:
+			if info.Mode().Perm()&0o077 != 0 {
+				out = append(out, domainconfig.Diagnostic{ID: "KEY-PERMS", Severity: "critical", Message: "config.yaml permissions are not private"})
+			}
+		}
 	}
 	return out
 }

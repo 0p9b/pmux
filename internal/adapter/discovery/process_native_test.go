@@ -3,7 +3,6 @@ package discovery
 import (
 	"encoding/binary"
 	"errors"
-	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -18,16 +17,16 @@ func TestParseDarwinProcArgs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseDarwinProcArgs returned error: %v", err)
 	}
-	if executable != filepath.Clean("/opt/cli-proxy-api") {
+	if executable != cleanObservedPath("/opt/cli-proxy-api") {
 		t.Fatalf("executable = %q", executable)
 	}
-	wantArgv := []string{"/opt/cli-proxy-api", "-config", "/Users/me/My Config/config.yaml"}
+	wantArgv := []string{cleanObservedPath("/opt/cli-proxy-api"), "-config", cleanObservedPath("/Users/me/My Config/config.yaml")}
 	if !reflect.DeepEqual(argv, wantArgv) {
 		t.Fatalf("argv = %#v, want %#v", argv, wantArgv)
 	}
 
 	evidence := normalizeProcessEvidence(ProcessEvidence{PID: 42, Executable: executable, Argv: argv})
-	if evidence.ConfigPath != filepath.Clean("/Users/me/My Config/config.yaml") {
+	if evidence.ConfigPath != cleanObservedPath("/Users/me/My Config/config.yaml") {
 		t.Fatalf("config path = %q", evidence.ConfigPath)
 	}
 }
