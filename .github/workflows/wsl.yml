@@ -14,46 +14,12 @@ permissions:
 
 jobs:
   wsl2:
-    runs-on:
-      group: wsl2
-      labels: [self-hosted, linux, x64]
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Prove runner is WSL
-        shell: bash
+      - name: Run WSL acceptance suite
+        shell: pwsh
         run: |
-          if [[ -z "${WSL_DISTRO_NAME:-}" ]] && ! grep -Eiq '(microsoft|wsl)' /proc/version; then
-            echo "release-gated WSL job is not running inside WSL" >&2
-            exit 1
-          fi
-          printf 'WSL distribution: %s\n' "${WSL_DISTRO_NAME:-detected-from-kernel}"
-      - name: Require WSL-tagged tests on this runner
-        shell: bash
-        run: |
-          set -euo pipefail
-          with_tag="$RUNNER_TEMP/wsl-e2e-with-tag.txt"
-          without_tag="$RUNNER_TEMP/wsl-e2e-without-tag.txt"
-          added="$RUNNER_TEMP/wsl-e2e-added.txt"
-          go list -tags=wsl_e2e \
-            -f '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}' \
-            ./... | sed '/^$/d' | sort -u >"$with_tag"
-          go list \
-            -f '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}' \
-            ./... | sed '/^$/d' | sort -u >"$without_tag"
-          comm -23 "$with_tag" "$without_tag" >"$added"
-          if [[ ! -s "$added" ]]; then
-            echo "no wsl_e2e-tagged test is selected on the WSL runner" >&2
-            exit 1
-          fi
-          echo "selected wsl_e2e test files:"
-          cat "$added"
-      - name: Run WSL integration suite
-        env:
-          PMUX_RELEASE_E2E: "1"
-        run: go test -tags=wsl_e2e ./...
-      - name: Smoke-test WSL-aware command
-        run: go run ./cmd/pmux version
+          $ErrorActionPreference = 'Stop'
+          $repo = (wsl wslpath -u "$env:GITHUB_WORKSPACE").Trim()
+          wsl bash -lc "set -euo pipefail; cd '$repo' && bash .github/scripts/wsl-acceptance.sh"

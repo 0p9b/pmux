@@ -1,0 +1,48 @@
+name: Release candidate gates
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Native test matrix
+    uses: ./.github/workflows/test.yml
+
+  compatibility:
+    name: CLIProxyAPI compatibility
+    uses: ./.github/workflows/compat.yml
+
+  platform-e2e:
+    name: Native platform E2E
+    uses: ./.github/workflows/platform-e2e.yml
+
+  wsl:
+    name: WSL acceptance
+    uses: ./.github/workflows/wsl.yml
+
+  security-privacy:
+    name: Security, privacy, and no-egress
+    uses: ./.github/workflows/security-privacy.yml
+
+  summary:
+    name: Gate summary
+    needs:
+      - tests
+      - compatibility
+      - platform-e2e
+      - wsl
+      - security-privacy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: All automated release gates passed
+        run: echo "Automated release infrastructure gates are green on ${GITHUB_SHA}"

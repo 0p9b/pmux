@@ -324,7 +324,7 @@ func RenderUnit(spec service.ServiceSpec) ([]byte, error) {
 	out.WriteString("Description=CLIProxyAPI instance " + spec.InstanceID + " (managed by PMux)\n")
 	out.WriteString("After=network-online.target\n\n")
 	out.WriteString("[Service]\nType=simple\n")
-	out.WriteString("WorkingDirectory=" + quote(filepath.ToSlash(spec.RuntimeDir)) + "\n")
+	out.WriteString("WorkingDirectory=" + systemdPath(spec.RuntimeDir) + "\n")
 	out.WriteString("ExecStart=" + quote(filepath.ToSlash(spec.PMuxPath)) + " --binary " + quote(filepath.ToSlash(spec.BinaryPath)) + " --config " + quote(filepath.ToSlash(spec.ConfigPath)) + " --runtime-dir " + quote(filepath.ToSlash(spec.RuntimeDir)) + "\n")
 	for _, entry := range environment {
 		out.WriteString("Environment=" + quote(entry) + "\n")
@@ -365,6 +365,13 @@ func validateSpec(spec service.ServiceSpec) error {
 	return nil
 }
 
+
+func systemdPath(value string) string {
+	value = filepath.ToSlash(value)
+	value = strings.ReplaceAll(value, `\`, `\\`)
+	value = strings.ReplaceAll(value, " ", `\x20`)
+	return value
+}
 func quote(value string) string {
 	value = strings.ReplaceAll(value, "\\", "\\\\")
 	value = strings.ReplaceAll(value, `"`, `\"`)

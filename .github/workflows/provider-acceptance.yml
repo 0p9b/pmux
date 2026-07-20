@@ -1,0 +1,44 @@
+name: Provider acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider or channel to exercise (gemini, codex, claude, vertex, ...)
+        required: true
+        type: string
+      skip_launch:
+        description: Skip Claude launch step
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+
+jobs:
+  live-provider:
+    if: secrets.PMUX_ACCEPTANCE_GEMINI_KEY != '' || secrets.PMUX_ACCEPTANCE_API_KEY != ''
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build PMux
+        run: go build -trimpath -o pmux ./cmd/pmux
+      - name: Run provider verification
+        env:
+          PMUX_ACCEPTANCE_PROVIDER: ${{ inputs.provider }}
+          PMUX_ACCEPTANCE_GEMINI_KEY: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY }}
+          PMUX_ACCEPTANCE_API_KEY: ${{ secrets.PMUX_ACCEPTANCE_API_KEY }}
+        run: |
+          set -euo pipefail
+          echo "Provider acceptance requires repository secrets and a prepared CLIProxyAPI instance."
+          echo "Configure PMUX_ACCEPTANCE_* secrets, then extend this workflow with managed-setup steps."
+          ./pmux version
+          ./pmux --json doctor || true

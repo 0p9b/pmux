@@ -1,12 +1,14 @@
 # PMux
 
+[![Release candidate gates](https://github.com/0p9b/pmux/actions/workflows/release-candidate.yml/badge.svg)](https://github.com/0p9b/pmux/actions/workflows/release-candidate.yml)
+[![Lint](https://github.com/0p9b/pmux/actions/workflows/lint.yml/badge.svg)](https://github.com/0p9b/pmux/actions/workflows/lint.yml)
 [![Tests](https://github.com/0p9b/pmux/actions/workflows/test.yml/badge.svg)](https://github.com/0p9b/pmux/actions/workflows/test.yml)
 [![Security and privacy](https://github.com/0p9b/pmux/actions/workflows/security-privacy.yml/badge.svg)](https://github.com/0p9b/pmux/actions/workflows/security-privacy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **One terminal interface for providers, models, and coding agents — the terminal control plane for CLIProxyAPI.**
 
-> **Pre-release status:** PMux is currently v0.x. The command and security contracts are being implemented, but v1 acceptance is not yet established. In particular, do not treat source availability or cross-compilation as evidence that the native Linux arm64, macOS, Windows, WSL, service, provider, or ACL acceptance matrix has passed.
+> **Pre-release status:** PMux is currently v0.x. Automated release gates (test matrix, lint, security/privacy, CLIProxyAPI compatibility, native platform E2E, and WSL acceptance) run on every push to `main`. Full **v1.0** also requires the manual provider and Claude Code checklist in [docs/acceptance.md](docs/acceptance.md).
 
 PMux is a terminal-first companion for [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI). It installs or adopts a core, keeps its management API local, guides provider authentication, discovers models from the running core, launches Claude Code with process-scoped credentials, and diagnoses failures. PMux does not proxy model traffic itself.
 
