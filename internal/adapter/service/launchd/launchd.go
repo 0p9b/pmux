@@ -484,7 +484,12 @@ func renderPlist(spec service.ServiceSpec, label string) ([]byte, error) {
 		return nil, err
 	}
 	out.WriteByte('\n')
-	return out.Bytes(), nil
+	// launchd's plist parser rejects <true></true>/<false></false> pairs
+	// (error 109 "Invalid property list"); boolean elements must be
+	// self-closing, which encoding/xml does not emit on its own.
+	body := bytes.ReplaceAll(out.Bytes(), []byte("<true></true>"), []byte("<true/>"))
+	body = bytes.ReplaceAll(body, []byte("<false></false>"), []byte("<false/>"))
+	return body, nil
 }
 
 func environmentMap(items []string) (map[string]string, error) {
