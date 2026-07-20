@@ -52,18 +52,28 @@ func TestDiscoveryIsReadOnlyForFilesAndProcesses(t *testing.T) {
 		Versions:  VersionDetector{},
 		LookPath:  func(string) (string, error) { return "", exec.ErrNotFound },
 	}
-	candidates, err := discoverer.Discover(context.Background(), Request{ConfigPath: config})
-	if err != nil {
-		t.Fatal(err)
-	}
+	var candidates []Candidate
 	var found bool
-	for _, candidate := range candidates {
-		if candidate.Process != nil && candidate.Process.PID == command.Process.Pid {
-			found = true
-			if candidate.Process.ConfigPath != config {
-				t.Fatalf("wrong process config: %q", candidate.Process.ConfigPath)
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		var discoverErr error
+		candidates, discoverErr = discoverer.Discover(context.Background(), Request{ConfigPath: config})
+		if discoverErr != nil {
+			t.Fatal(discoverErr)
+		}
+		for _, candidate := range candidates {
+			if candidate.Process != nil && candidate.Process.PID == command.Process.Pid {
+				found = true
+				if candidate.Process.ConfigPath != config {
+					t.Fatalf("wrong process config: %q", candidate.Process.ConfigPath)
+				}
+				break
 			}
 		}
+		if found || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 	if !found {
 		t.Fatalf("live CLIProxyAPI-shaped process %d was not discovered: %#v", command.Process.Pid, candidates)
