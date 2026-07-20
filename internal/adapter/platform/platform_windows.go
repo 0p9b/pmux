@@ -161,11 +161,17 @@ func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error 
 		if ace == nil || ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
 			return insecureWindowsPermissions(path, "the access list contains a non-allow entry")
 		}
-		if ace.Mask != windows.GENERIC_ALL {
-			return insecureWindowsPermissions(path, "an approved principal does not have exactly Full Control")
+		if ace.Mask != windows.GENERIC_ALL && ace.Mask != windows.FILE_ALL_ACCESS && ace.Mask != 0x001f01ff {
+			return insecureWindowsPermissions(path, fmt.Sprintf("an approved principal does not have Full Control (mask=0x%08x)", ace.Mask))
 		}
-		if ace.Header.AceFlags != expectedFlags {
-			return insecureWindowsPermissions(path, "an access entry has unexpected inheritance flags")
+		if isDir {
+			if ace.Header.AceFlags != (windows.OBJECT_INHERIT_ACE|windows.CONTAINER_INHERIT_ACE) && ace.Header.AceFlags != 0 {
+				return insecureWindowsPermissions(path, fmt.Sprintf("a directory access entry has unexpected flags 0x%02x", ace.Header.AceFlags))
+			}
+		} else {
+			if ace.Header.AceFlags != 0 && ace.Header.AceFlags != windows.INHERITED_ACE {
+				return insecureWindowsPermissions(path, fmt.Sprintf("a file access entry has unexpected flags 0x%02x", ace.Header.AceFlags))
+			}
 		}
 		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
 		switch {
