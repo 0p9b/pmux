@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/0p9b/pmux/internal/adapter/configfile"
+	adapterfs "github.com/0p9b/pmux/internal/adapter/fs"
 	"github.com/0p9b/pmux/internal/app"
 	domainconfig "github.com/0p9b/pmux/internal/domain/config"
 	"github.com/0p9b/pmux/internal/pmuxerr"
@@ -396,10 +397,5 @@ func replacePrivateFile(path string, body []byte) error {
 	if err := os.Rename(tempPath, path); err != nil {
 		return err
 	}
-	dir, err := os.Open(filepath.Dir(path))
-	if err != nil {
-		return err
-	}
-	defer dir.Close()
-	return dir.Sync()
+	return adapterfs.SyncDirectory(filepath.Dir(path))
 }

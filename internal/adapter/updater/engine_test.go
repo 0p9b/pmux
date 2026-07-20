@@ -376,6 +376,9 @@ func TestSelfUpdatePreActivationFailuresLeaveExecutableUntouched(t *testing.T) {
 }
 
 func TestSelfUpdatePostflightFailureRestoresExecutable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows self-update activation completes asynchronously in the detached helper")
+	}
 	root := t.TempDir()
 	current := filepath.Join(root, "pmux")
 	old := []byte("old executable bytes")
@@ -403,6 +406,9 @@ func TestSelfUpdatePostflightFailureRestoresExecutable(t *testing.T) {
 }
 
 func TestSelfUpdateRetainsPreviousExecutable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows self-update activation completes asynchronously in the detached helper")
+	}
 	root := t.TempDir()
 	current := filepath.Join(root, selfExecutableName())
 	old := []byte("old executable bytes")

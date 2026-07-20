@@ -4,8 +4,8 @@ package updater
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,7 +80,7 @@ func (e *Engine) activateSelf(_ context.Context, result Result, current, candida
 	if err := platform.SecurePermissions(planPath, false); err != nil {
 		return result, err
 	}
-	if err := launchDetachedSelfHelper(helper, planPath); err != nil {
+	if err := selfHelperLauncher(helper, planPath); err != nil {
 		return result, normalize(err, pmuxerr.InstallRollbackAttempted, "Could not start the detached Windows self-update helper; the current executable is unchanged.")
 	}
 	launched = true
@@ -88,6 +88,8 @@ func (e *Engine) activateSelf(_ context.Context, result Result, current, candida
 	result.Warnings = append(result.Warnings, "Windows activation will complete after this PMux process exits; status is written to the private self-update handoff file.")
 	return result, nil
 }
+
+var selfHelperLauncher = launchDetachedSelfHelper
 
 func launchDetachedSelfHelper(helper, planPath string) error {
 	cmd := exec.Command(helper, selfUpdateHelperMarker, planPath)

@@ -112,12 +112,14 @@ func (p *nativePlatform) SecurePermissions(path string, isDir bool) error {
 	// D:P builds a protected (inheritance-disabled) DACL granting Full Access
 	// only to SYSTEM and the current user.
 	sddl := "D:P(A;" + inheritance + ";FA;;;SY)(A;" + inheritance + ";FA;;;" + userSID.String() + ")"
-	dacl, err := daclFromSDDL(sddl)
+	sd, dacl, err := daclFromSDDL(sddl)
 	if err != nil {
 		return permissionError(err, path, "could not create a private Windows access list")
 	}
 	securityInfo := windows.SECURITY_INFORMATION(windows.DACL_SECURITY_INFORMATION | windows.PROTECTED_DACL_SECURITY_INFORMATION)
-	if err := windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, securityInfo, nil, nil, dacl, nil); err != nil {
+	err = windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, securityInfo, nil, nil, dacl, nil)
+	_, _ = windows.LocalFree(windows.Handle(unsafe.Pointer(sd)))
+	if err != nil {
 		return permissionError(err, path, "could not apply a private Windows access list")
 	}
 	return p.VerifySecurePermissions(path, isDir)
@@ -125,25 +127,25 @@ func (p *nativePlatform) SecurePermissions(path string, isDir bool) error {
 
 var procConvertSDDL = windows.NewLazySystemDLL("advapi32.dll").NewProc("ConvertStringSecurityDescriptorToSecurityDescriptorW")
 
-func daclFromSDDL(sddl string) (*windows.ACL, error) {
+func daclFromSDDL(sddl string) (*windows.SECURITY_DESCRIPTOR, *windows.ACL, error) {
 	sddlPtr, err := windows.UTF16PtrFromString(sddl)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var sd *windows.SECURITY_DESCRIPTOR
 	r1, _, callErr := syscall.SyscallN(procConvertSDDL.Addr(), uintptr(unsafe.Pointer(sddlPtr)), 1, uintptr(unsafe.Pointer(&sd)), 0)
 	if r1 == 0 {
 		if callErr != windows.ERROR_SUCCESS {
-			return nil, callErr
+			return nil, nil, callErr
 		}
-		return nil, errors.New("ConvertStringSecurityDescriptorToSecurityDescriptorW failed")
+		return nil, nil, errors.New("ConvertStringSecurityDescriptorToSecurityDescriptorW failed")
 	}
-	defer func() { _, _ = windows.LocalFree(windows.Handle(unsafe.Pointer(sd))) }()
 	dacl, _, err := sd.DACL()
 	if err != nil {
-		return nil, err
+		_, _ = windows.LocalFree(windows.Handle(unsafe.Pointer(sd)))
+		return nil, nil, err
 	}
-	return dacl, nil
+	return sd, dacl, nil
 }
 
 func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error {
