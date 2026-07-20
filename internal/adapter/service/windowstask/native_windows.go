@@ -364,8 +364,21 @@ func readDefinition(task *ole.IDispatch, name string) (TaskDefinition, error) {
 	return out, nil
 }
 
-func getDispatch(object *ole.IDispatch, name string) (*ole.IDispatch, error) {
+// propertyValue reads a dispatch property, falling back to a method-style
+// invoke (DISPATCH_METHOD) when the property-get invoke fails. The Task
+// Scheduler COM server on recent Windows Server builds rejects plain
+// DISPATCH_PROPERTYGET for some properties (e.g. IRegisteredTask.Definition)
+// with DISP_E_MEMBERNOTFOUND ("Member not found").
+func propertyValue(object *ole.IDispatch, name string) (*ole.VARIANT, error) {
 	value, err := oleutil.GetProperty(object, name)
+	if err == nil {
+		return value, nil
+	}
+	return oleutil.CallMethod(object, name)
+}
+
+func getDispatch(object *ole.IDispatch, name string) (*ole.IDispatch, error) {
+	value, err := propertyValue(object, name)
 	if err != nil {
 		return nil, err
 	}
@@ -376,14 +389,14 @@ func getDispatch(object *ole.IDispatch, name string) (*ole.IDispatch, error) {
 	return dispatch, nil
 }
 func stringProperty(object *ole.IDispatch, name string) (string, error) {
-	value, err := oleutil.GetProperty(object, name)
+	value, err := propertyValue(object, name)
 	if err != nil {
 		return "", err
 	}
 	return value.ToString(), nil
 }
 func intProperty(object *ole.IDispatch, name string) (int, error) {
-	value, err := oleutil.GetProperty(object, name)
+	value, err := propertyValue(object, name)
 	if err != nil {
 		return 0, err
 	}
@@ -407,7 +420,7 @@ func intProperty(object *ole.IDispatch, name string) (int, error) {
 	}
 }
 func boolProperty(object *ole.IDispatch, name string) (bool, error) {
-	value, err := oleutil.GetProperty(object, name)
+	value, err := propertyValue(object, name)
 	if err != nil {
 		return false, err
 	}

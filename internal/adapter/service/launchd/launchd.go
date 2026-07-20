@@ -57,6 +57,7 @@ type Manager struct {
 	label      string
 	plistPath  string
 	uid        int
+	domainName string
 	runner     Runner
 	health     health.Checker
 }
@@ -188,15 +189,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 	if status.State != service.ServiceRunning {
-		_, _ = m.runner.Run(ctx, "/bin/launchctl", "bootout", m.target())
-		if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
-			if !bootstrapAlreadyLoaded(err, out) {
-				loadOut, loadErr := m.runner.Run(ctx, "/bin/launchctl", "load", "-w", m.plistPath)
-				if loadErr != nil {
-					return launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
-				}
-				_ = loadOut
-			}
+		if err := m.ensureLoaded(ctx); err != nil {
+			return err
 		}
 		if out, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", m.target()); err != nil {
 			return launchctlError(launchctlFailure(err, out), "could not start the LaunchAgent")
@@ -243,10 +237,8 @@ func (m *Manager) Restart(ctx context.Context) (service.ServiceStatus, error) {
 			return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not restart the LaunchAgent")
 		}
 	} else {
-		if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
-			if !bootstrapAlreadyLoaded(err, out) {
-				return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
-			}
+		if err := m.ensureLoaded(ctx); err != nil {
+			return service.ServiceStatus{}, err
 		}
 		if out, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", m.target()); err != nil {
 			return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not start the LaunchAgent")
@@ -277,8 +269,18 @@ func (m *Manager) Status(ctx context.Context) (service.ServiceStatus, error) {
 	if _, err := m.ownedDefinition(); err != nil {
 		return service.ServiceStatus{}, err
 	}
-	out, err := m.runner.Run(ctx, "/bin/launchctl", "print", m.target())
-	if err != nil {
+	var out []byte
+	running := false
+	for _, domain := range m.domainCandidates() {
+		printed, printErr := m.runner.Run(ctx, "/bin/launchctl", "print", domain+"/"+m.label)
+		if printErr == nil {
+			m.domainName = domain
+			out = printed
+			running = true
+			break
+		}
+	}
+	if !running {
 		return service.ServiceStatus{Backend: service.BackendLaunchd, State: service.ServiceStopped, CoreVersion: health.UnknownVersion}, nil
 	}
 	return service.ServiceStatus{
@@ -400,7 +402,46 @@ func (m *Manager) validateSpec(spec service.ServiceSpec) error {
 }
 
 func (m *Manager) target() string { return m.domain() + "/" + m.label }
-func (m *Manager) domain() string { return "gui/" + strconv.Itoa(m.uid) }
+
+// domain returns the launchd domain this Manager registered the job in.
+// It defaults to the Aqua session domain (gui/<uid>) but falls back to the
+// background session domain (user/<uid>) when the calling process has no GUI
+// session context, e.g. headless CI runners: bootstrap into gui/<uid> fails
+// with I/O error 5 there, while user/<uid> accepts the job.
+func (m *Manager) domain() string {
+	if m.domainName != "" {
+		return m.domainName
+	}
+	return "gui/" + strconv.Itoa(m.uid)
+}
+
+// domainCandidates lists domains to try, most recently successful first.
+func (m *Manager) domainCandidates() []string {
+	primary := m.domain()
+	fallback := "user/" + strconv.Itoa(m.uid)
+	if fallback == primary {
+		return []string{primary}
+	}
+	return []string{primary, fallback}
+}
+
+// ensureLoaded bootstraps the LaunchAgent into a domain that accepts it,
+// remembering the working domain for subsequent kickstart/print/bootout.
+func (m *Manager) ensureLoaded(ctx context.Context) error {
+	var lastOut []byte
+	var lastErr error
+	for _, domain := range m.domainCandidates() {
+		target := domain + "/" + m.label
+		_, _ = m.runner.Run(ctx, "/bin/launchctl", "bootout", target)
+		out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", domain, m.plistPath)
+		if err == nil || bootstrapAlreadyLoaded(err, out) {
+			m.domainName = domain
+			return nil
+		}
+		lastOut, lastErr = out, err
+	}
+	return launchctlError(launchctlFailure(lastErr, lastOut), "could not bootstrap the LaunchAgent")
+}
 
 func (m *Manager) ownedDefinition() ([]byte, error) {
 	body, err := os.ReadFile(m.plistPath)

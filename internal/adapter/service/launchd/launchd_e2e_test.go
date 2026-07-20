@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,11 +102,15 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	adHocSign(t, hostPath)
 	adHocSign(t, corePath)
 
-	configPath := filepath.Join(root, "instance", "config.json")
+	// Keep every path the plist references off t.TempDir(): /var is a symlink
+	// to /private/var and launchd rejects jobs whose referenced paths resolve
+	// through symlinks (bootstrap fails with I/O error 5).
+	configPath := filepath.Join(stableRoot, "instance", "config.json")
 	writeCoreConfig(t, configPath, e2eCoreConfig{Address: address})
+	t.Cleanup(func() { _ = os.RemoveAll(stableRoot) })
 
-	runtimeDir := filepath.Join(root, "instance", "runtime")
-	logDir := filepath.Join(root, "state", "logs")
+	runtimeDir := filepath.Join(stableRoot, "instance", "runtime")
+	logDir := filepath.Join(stableRoot, "state", "logs")
 	for _, dir := range []string{runtimeDir, logDir} {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatalf("create %s: %v", dir, err)
@@ -158,6 +163,7 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	assertReleasePlist(t, manager.plistPath, spec, label)
 
 	if err := manager.Start(ctx); err != nil {
+		dumpLaunchdDiagnostics(t, manager, label)
 		t.Fatalf("Start(): %v", err)
 	}
 	status, err := manager.Status(ctx)
@@ -318,6 +324,27 @@ func repositoryRootFromCaller(t *testing.T) string {
 		t.Fatal("runtime.Caller could not locate repository source")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", "..", "..", ".."))
+}
+
+func dumpLaunchdDiagnostics(t *testing.T, manager *Manager, label string) {
+	t.Helper()
+	if out, err := exec.Command("plutil", "-lint", manager.plistPath).CombinedOutput(); err != nil {
+		t.Logf("plutil -lint: %v\n%s", err, out)
+	} else {
+		t.Logf("plutil -lint: %s", out)
+	}
+	uid := strconv.Itoa(os.Getuid())
+	for _, domain := range []string{"gui/" + uid, "user/" + uid} {
+		out, err := exec.Command("launchctl", "print", domain+"/"+label).CombinedOutput()
+		t.Logf("launchctl print %s/%s: err=%v\n%s", domain, label, err, out)
+	}
+	if out, err := exec.Command("launchctl", "list").CombinedOutput(); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			if strings.Contains(line, "pmux") {
+				t.Logf("launchctl list: %s", line)
+			}
+		}
+	}
 }
 
 func containsBytes(body, needle []byte) bool {
