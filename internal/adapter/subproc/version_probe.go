@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -50,6 +51,11 @@ func (p VersionProbe) Probe(ctx context.Context, binaryPath string) (VersionInfo
 	}
 	if runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
 		return VersionInfo{}, ErrUnsafeProbe
+	}
+	if runtime.GOOS == "windows" {
+		if err := validateProbeExecutable(binary); err != nil {
+			return VersionInfo{}, ErrUnsafeProbe
+		}
 	}
 
 	root, err := os.MkdirTemp(p.TempRoot, "pmux-version-probe-")
@@ -134,4 +140,21 @@ func temporaryProxyKey() (string, error) {
 		return "", err
 	}
 	return "sk-" + hex.EncodeToString(bytes), nil
+}
+
+
+func validateProbeExecutable(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	var magic [2]byte
+	if _, err := io.ReadFull(file, magic[:]); err != nil {
+		return err
+	}
+	if magic[0] != 'M' || magic[1] != 'Z' {
+		return errors.New("not a PE executable")
+	}
+	return nil
 }

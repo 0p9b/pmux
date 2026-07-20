@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"runtime"
 	"time"
 
 	"github.com/0p9b/pmux/internal/domain/service"
@@ -94,9 +95,11 @@ func TestDiscoveryIsReadOnlyForFilesAndProcesses(t *testing.T) {
 	if beforeHash != afterHash || beforeInfo.Mode() != afterInfo.Mode() || !beforeInfo.ModTime().Equal(afterInfo.ModTime()) {
 		t.Fatal("discovery changed the source config")
 	}
-	procState, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", command.Process.Pid))
-	if err != nil || len(procState) == 0 {
-		t.Fatalf("discovery changed or terminated the source process: %v", err)
+	if runtime.GOOS == "linux" {
+		procState, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", command.Process.Pid))
+		if err != nil || len(procState) == 0 {
+			t.Fatalf("discovery changed or terminated the source process: %v", err)
+		}
 	}
 }
 

@@ -179,7 +179,7 @@ func TestVersionProbeUsesGeneratedIsolatedState(t *testing.T) {
 	if executor.port <= 0 {
 		t.Fatalf("probe did not allocate a free loopback port: %d", executor.port)
 	}
-	if filepath.Dir(executor.authDir) != executor.invocation.Dir {
+	if filepath.Clean(filepath.Dir(executor.authDir)) != filepath.Clean(executor.invocation.Dir) {
 		t.Fatalf("auth dir not isolated under runtime: %s vs %s", executor.authDir, executor.invocation.Dir)
 	}
 	if _, err := os.Stat(executor.invocation.Dir); !os.IsNotExist(err) {

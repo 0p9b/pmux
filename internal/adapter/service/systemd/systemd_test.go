@@ -74,8 +74,8 @@ func TestRenderUnitUsesCanonicalIdentityArgvCWDAndEnvironment(t *testing.T) {
 	for _, expected := range []string{
 		OwnershipMarker,
 		"# PMux-Instance: default",
-		"WorkingDirectory=\"" + spec.RuntimeDir + "\"",
-		"ExecStart=\"" + spec.PMuxPath + "\" --binary \"" + spec.BinaryPath + "\" --config \"" + spec.ConfigPath + "\" --runtime-dir \"" + spec.RuntimeDir + "\"",
+		"WorkingDirectory=\"" + filepath.ToSlash(spec.RuntimeDir) + "\"",
+		"ExecStart=\"" + filepath.ToSlash(spec.PMuxPath) + "\" --binary \"" + filepath.ToSlash(spec.BinaryPath) + "\" --config \"" + filepath.ToSlash(spec.ConfigPath) + "\" --runtime-dir \"" + filepath.ToSlash(spec.RuntimeDir) + "\"",
 		"Environment=\"HOME=/home/u\"",
 		"Environment=\"PATH=/usr/bin\"",
 		"WantedBy=default.target",

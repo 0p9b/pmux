@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,8 +45,10 @@ func TestBundleIsPrivateRedactedAndExcludesAuthContents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode = %o", info.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("mode = %o", info.Mode().Perm())
+		}
 	}
 	if result.Manifest.Excluded["auth-file-content"] != 2 {
 		t.Fatalf("excluded = %#v", result.Manifest.Excluded)
@@ -98,6 +101,9 @@ func TestBundleUsesPermissionAndVerificationHooks(t *testing.T) {
 		},
 		VerifySecurePermissions: func(path string, isDir bool) error {
 			verifyCalled = path == destination && !isDir
+			if runtime.GOOS == "windows" {
+				return nil
+			}
 			info, err := os.Stat(path)
 			if err != nil {
 				return err

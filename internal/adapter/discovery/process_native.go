@@ -3,6 +3,7 @@ package discovery
 import (
 	"encoding/binary"
 	"errors"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -69,11 +70,14 @@ func nextNULTerminated(value []byte, start int) (string, int, bool) {
 	return strings.Clone(string(value[start:end])), end + 1, true
 }
 
-func cleanObservedPath(path string) string {
-	if path == "" {
+func cleanObservedPath(value string) string {
+	if value == "" {
 		return ""
 	}
-	return filepath.Clean(path)
+	if strings.HasPrefix(value, "/") || strings.HasPrefix(value, `\\`) {
+		return path.Clean(value)
+	}
+	return filepath.Clean(value)
 }
 
 func normalizeProcessEvidence(process ProcessEvidence) ProcessEvidence {

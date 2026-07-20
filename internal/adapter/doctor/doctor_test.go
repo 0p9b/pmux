@@ -3,7 +3,9 @@ package doctor
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -30,17 +32,25 @@ type seedSource struct {
 	stateLock   StateLockFact
 }
 
+func fixtureRoot() string {
+	if runtime.GOOS == "windows" {
+		return `C:\opt\pmux`
+	}
+	return "/opt/pmux"
+}
+
 func healthySource() *seedSource {
+	root := fixtureRoot()
 	return &seedSource{
-		binary:      BinaryFact{Path: "/opt/pmux/cli-proxy-api", Exists: true, Executable: true, ArchitectureOK: true, Managed: true, ChecksumOK: true, Version: "7.2.92"},
-		config:      AbsoluteConfigFact{ConfigPath: "/opt/pmux/config.yaml", ConfigReadable: true, ConfigParsed: true, WSAuthEnabled: true, ArgvUsesAbsolutePath: true, RuntimeDir: "/opt/pmux/runtime"},
+		binary:      BinaryFact{Path: filepath.Join(root, "cli-proxy-api"), Exists: true, Executable: true, ArchitectureOK: true, Managed: true, ChecksumOK: true, Version: "7.2.92"},
+		config:      AbsoluteConfigFact{ConfigPath: filepath.Join(root, "config.yaml"), ConfigReadable: true, ConfigParsed: true, WSAuthEnabled: true, ArgvUsesAbsolutePath: true, RuntimeDir: filepath.Join(root, "runtime")},
 		safe:        SafeModeFact{HTTPStatus: 200, Authenticated: true},
-		permissions: PermissionsFact{Targets: []PermissionTarget{{Path: "/opt/pmux/config.yaml", Secure: true}, {Path: "/opt/pmux/auth", Auth: true, Secure: true}}},
+		permissions: PermissionsFact{Targets: []PermissionTarget{{Path: filepath.Join(root, "config.yaml"), Secure: true}, {Path: filepath.Join(root, "auth"), Auth: true, Secure: true}}},
 		service:     ServiceFact{Backend: "foreground", Installed: true, Running: true, DefinitionOwned: true, IdentityMatches: true, DefinitionUsesConfig: true, EnvironmentScrubbed: true, RuntimeDirClean: true},
 		health:      HealthFact{HTTPStatus: 200, Version: "7.2.92", Endpoint: "http://127.0.0.1:8317/healthz", LatencyMS: 10},
 		providers:   ProviderFact{Configured: 1, Usable: 1},
 		models:      ModelsFact{DiscoverySucceeded: true, Count: 2, Source: "management"},
-		claude:      ClaudeFact{Found: true, VersionKnown: true, Supported: true, Version: "2.1.215", Path: "/usr/bin/claude"},
+		claude:      ClaudeFact{Found: true, VersionKnown: true, Supported: true, Version: "2.1.215", Path: filepath.Join(root, "claude")},
 		compat:      CompatibilityFact{VersionKnown: true, DetectedVersion: "7.2.92", MinimumVersion: "7.2.91", FloorSatisfied: true},
 		update:      UpdateStateFact{},
 		port:        PortFact{Host: "127.0.0.1", Port: 8317, Listening: true, ExpectedOwner: true, Owner: "cli-proxy-api"},
@@ -153,7 +163,7 @@ func TestEverySeededFailureDetectedAndExitsSeven(t *testing.T) {
 	source.binary.Exists = false
 	source.config.ArgvUsesAbsolutePath = false
 	source.safe = SafeModeFact{HTTPStatus: 403, Header: "example-api-key", PlaceholderConfigured: true}
-	source.permissions.Targets[0] = PermissionTarget{Path: "/opt/pmux/config.yaml", Secure: false, Detail: "mode 0644"}
+	source.permissions.Targets[0] = PermissionTarget{Path: filepath.Join(fixtureRoot(), "config.yaml"), Secure: false, Detail: "mode 0644"}
 	source.service.Running = false
 	source.health.HTTPStatus = 503
 	source.providers = ProviderFact{Configured: 1, Unavailable: 1}

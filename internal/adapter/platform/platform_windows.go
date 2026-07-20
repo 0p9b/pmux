@@ -148,10 +148,6 @@ func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error 
 	if dacl == nil || dacl.AceCount != 2 {
 		return insecureWindowsPermissions(path, fmt.Sprintf("expected exactly 2 access entries, found %d", windowsACECount(dacl)))
 	}
-	expectedFlags := uint8(0)
-	if isDir {
-		expectedFlags = windows.OBJECT_INHERIT_ACE | windows.CONTAINER_INHERIT_ACE
-	}
 	seenUser, seenSystem := false, false
 	for index := uint32(0); index < uint32(dacl.AceCount); index++ {
 		var ace *windows.ACCESS_ALLOWED_ACE
@@ -161,7 +157,7 @@ func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error 
 		if ace == nil || ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE {
 			return insecureWindowsPermissions(path, "the access list contains a non-allow entry")
 		}
-		if ace.Mask != windows.GENERIC_ALL && ace.Mask != windows.FILE_ALL_ACCESS && ace.Mask != 0x001f01ff {
+		if ace.Mask != windows.GENERIC_ALL && ace.Mask != 0x001f01ff {
 			return insecureWindowsPermissions(path, fmt.Sprintf("an approved principal does not have Full Control (mask=0x%08x)", ace.Mask))
 		}
 		if isDir {

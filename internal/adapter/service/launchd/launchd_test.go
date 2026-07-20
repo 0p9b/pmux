@@ -1,3 +1,5 @@
+//go:build darwin
+
 package launchd
 
 import (
@@ -135,17 +137,17 @@ func TestInstallRendersCanonicalSafePlist(t *testing.T) {
 	if !ok {
 		t.Fatalf("ProgramArguments type = %T", root["ProgramArguments"])
 	}
-	wantArgs := []any{spec.PMuxPath, "--binary", spec.BinaryPath, "--config", spec.ConfigPath}
+	wantArgs := []any{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath)}
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Fatalf("ProgramArguments = %#v, want %#v", gotArgs, wantArgs)
 	}
-	if got := stringValue(root["WorkingDirectory"]); got != spec.RuntimeDir {
+	if got := stringValue(root["WorkingDirectory"]); got != filepath.ToSlash(spec.RuntimeDir) {
 		t.Fatalf("WorkingDirectory = %q", got)
 	}
-	if got := stringValue(root["StandardOutPath"]); got != filepath.Join(spec.LogDir, "test-one.out.log") {
+	if got := stringValue(root["StandardOutPath"]); got != filepath.Join(filepath.ToSlash(spec.LogDir), "test-one.out.log") {
 		t.Fatalf("StandardOutPath = %q", got)
 	}
-	if got := stringValue(root["StandardErrorPath"]); got != filepath.Join(spec.LogDir, "test-one.err.log") {
+	if got := stringValue(root["StandardErrorPath"]); got != filepath.Join(filepath.ToSlash(spec.LogDir), "test-one.err.log") {
 		t.Fatalf("StandardErrorPath = %q", got)
 	}
 	if got, ok := root["RunAtLoad"].(bool); !ok || !got {
@@ -175,10 +177,10 @@ func TestInstallRendersCanonicalSafePlist(t *testing.T) {
 	if mode := fileMode(t, manager.plistPath); mode != 0o600 {
 		t.Fatalf("plist mode = %#o, want 0600", mode)
 	}
-	if mode := fileMode(t, spec.RuntimeDir); mode != 0o700 {
+	if mode := fileMode(t, filepath.ToSlash(spec.RuntimeDir)); mode != 0o700 {
 		t.Fatalf("runtime mode = %#o, want 0700", mode)
 	}
-	if mode := fileMode(t, spec.LogDir); mode != 0o700 {
+	if mode := fileMode(t, filepath.ToSlash(spec.LogDir)); mode != 0o700 {
 		t.Fatalf("log mode = %#o, want 0700", mode)
 	}
 }
@@ -196,10 +198,10 @@ func TestInstallRejectsForbiddenEnvironmentAndRuntimeDotEnv(t *testing.T) {
 			assertPMuxCode(t, err, pmuxerr.ConfigValidationFailed)
 		})
 	}
-	if err := os.MkdirAll(spec.RuntimeDir, 0o700); err != nil {
+	if err := os.MkdirAll(filepath.ToSlash(spec.RuntimeDir), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(spec.RuntimeDir, ".env"), []byte("PGSTORE_DSN=bad"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(filepath.ToSlash(spec.RuntimeDir), ".env"), []byte("PGSTORE_DSN=bad"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	assertPMuxCode(t, manager.Install(context.Background(), spec), pmuxerr.ConfigValidationFailed)
@@ -321,7 +323,7 @@ func TestLogsUsesSeparateTailArgumentsAndOwnedPaths(t *testing.T) {
 		t.Fatalf("stream calls = %d", len(runner.stream))
 	}
 	want := commandCall{name: "/usr/bin/tail", args: []string{
-		"-n", "37", "-F", filepath.Join(spec.LogDir, "test-one.out.log"), filepath.Join(spec.LogDir, "test-one.err.log"),
+		"-n", "37", "-F", filepath.Join(filepath.ToSlash(spec.LogDir), "test-one.out.log"), filepath.Join(filepath.ToSlash(spec.LogDir), "test-one.err.log"),
 	}}
 	if !reflect.DeepEqual(runner.stream[0], want) {
 		t.Fatalf("stream call = %#v, want %#v", runner.stream[0], want)

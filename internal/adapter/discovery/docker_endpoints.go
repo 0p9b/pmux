@@ -1,6 +1,6 @@
 package discovery
 
-import "path/filepath"
+import "path"
 
 type dockerEndpoint struct {
 	Network string
@@ -15,7 +15,7 @@ func dockerEndpointCandidates(goos, home string) []dockerEndpoint {
 		return []dockerEndpoint{{Network: "unix", Address: "/var/run/docker.sock"}}
 	case "darwin":
 		return []dockerEndpoint{
-			{Network: "unix", Address: filepath.Join(home, ".docker", "run", "docker.sock")},
+			{Network: "unix", Address: path.Join(home, ".docker", "run", "docker.sock")},
 			{Network: "unix", Address: "/var/run/docker.sock"},
 		}
 	case "windows":

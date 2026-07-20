@@ -48,9 +48,6 @@ func (LocalProcessEnumerator) Processes(ctx context.Context) ([]ProcessEvidence,
 			continue
 		}
 		seen[pid] = struct{}{}
-		if !looksLikeCore(darwinProcessName(entries[i].Proc.P_comm[:]), nil) {
-			continue
-		}
 
 		raw, err := unix.SysctlRaw("kern.procargs2", pid)
 		if err != nil || len(raw) > int(argMax) || len(raw) > maxProcessArgBytes {

@@ -194,7 +194,7 @@ func splitQuoted(input string) []string {
 			escaped = false
 			continue
 		}
-		if char == '\\' {
+		if char == '\\' && quote != 0 {
 			escaped = true
 			continue
 		}

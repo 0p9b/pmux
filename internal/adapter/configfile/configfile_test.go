@@ -16,10 +16,11 @@ import (
 	"github.com/0p9b/pmux/internal/pmuxerr"
 )
 
-const templateConfig = `# operator-owned header
+func templateConfig(authDir string) string {
+	return `# operator-owned header
 host: "0.0.0.0" # keep host note
 port: 8317
-auth-dir: /tmp/auth
+auth-dir: ` + authDir + `
 api-keys:
   - example-api-key # upstream template
 remote-management:
@@ -31,6 +32,17 @@ provider: &provider
 provider-copy: *provider
 unknown-after: 42 # keep tail
 `
+}
+
+
+func testAuthDir(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "auth")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
 
 func writeFixture(t *testing.T, content string) string {
 	t.Helper()
@@ -42,7 +54,9 @@ func writeFixture(t *testing.T, content string) string {
 }
 
 func TestManagedHardeningPreservesASTAndAppliesPrivately(t *testing.T) {
-	path := writeFixture(t, templateConfig)
+	authDir := testAuthDir(t)
+	original := templateConfig(authDir)
+	path := writeFixture(t, original)
 	backups := filepath.Join(t.TempDir(), "backups", "default")
 	adapter := New(backups)
 	adapter.now = func() time.Time { return time.Date(2026, 7, 20, 14, 12, 3, 0, time.UTC) }
@@ -88,7 +102,7 @@ func TestManagedHardeningPreservesASTAndAppliesPrivately(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := filepath.Base(result.BackupPath), "config.yaml.20260720T141203Z."+shortSHA([]byte(templateConfig))+".bak"; got != want {
+	if got, want := filepath.Base(result.BackupPath), "config.yaml.20260720T141203Z."+shortSHA([]byte(original))+".bak"; got != want {
 		t.Fatalf("backup name = %q, want %q", got, want)
 	}
 	for _, privatePath := range []string{path, result.BackupPath} {
@@ -111,7 +125,7 @@ func TestManagedHardeningPreservesASTAndAppliesPrivately(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(backup) != templateConfig {
+	if string(backup) != original {
 		t.Fatal("backup does not contain exact prior bytes")
 	}
 	applied, err := adapter.Read(context.Background(), path)
@@ -132,13 +146,13 @@ func TestManagedHardeningPreservesASTAndAppliesPrivately(t *testing.T) {
 }
 
 func TestPlanAndApplyRejectStaleFingerprint(t *testing.T) {
-	path := writeFixture(t, secureConfig("8317"))
+	path := writeFixture(t, secureConfig(t, "8317"))
 	adapter := New(filepath.Join(t.TempDir(), "backups"))
 	snapshot, err := adapter.Read(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(secureConfig("8318")), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(secureConfig(t, "8318")), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	_, err = adapter.Plan(context.Background(), snapshot, []domainconfig.PatchOp{{Path: "ws-auth", Value: true}})
@@ -152,7 +166,7 @@ func TestPlanAndApplyRejectStaleFingerprint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	changed := secureConfig("8320")
+	changed := secureConfig(t, "8320")
 	if err := os.WriteFile(path, []byte(changed), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +182,7 @@ func TestPlanAndApplyRejectStaleFingerprint(t *testing.T) {
 }
 
 func TestApplyRollsBackAfterVerificationFailure(t *testing.T) {
-	original := secureConfig("8317")
+	original := secureConfig(t, "8317")
 	path := writeFixture(t, original)
 	backupDir := filepath.Join(t.TempDir(), "backups")
 	adapter := New(backupDir)
@@ -202,7 +216,7 @@ func TestApplyRollsBackAfterVerificationFailure(t *testing.T) {
 
 func TestTemplateKeyDetectionAndErrorsNeverRevealKey(t *testing.T) {
 	const template = "sk-placeholder-super-secret-canary"
-	path := writeFixture(t, strings.Replace(secureConfig("8317"), "sk-real-key-abcdefghijklmnopqrstuvwxyz", template, 1))
+	path := writeFixture(t, strings.Replace(secureConfig(t, "8317"), "sk-real-key-abcdefghijklmnopqrstuvwxyz", template, 1))
 	adapter := New(filepath.Join(t.TempDir(), "backups"))
 	snapshot, err := adapter.Read(context.Background(), path)
 	if err != nil {
@@ -225,7 +239,7 @@ func TestTemplateKeyDetectionAndErrorsNeverRevealKey(t *testing.T) {
 }
 
 func TestPlanKeepsManagementLocalAndRedactsStructuredSecrets(t *testing.T) {
-	path := writeFixture(t, secureConfig("8317"))
+	path := writeFixture(t, secureConfig(t, "8317"))
 	adapter := New(filepath.Join(t.TempDir(), "backups"))
 	snapshot, err := adapter.Read(context.Background(), path)
 	if err != nil {
@@ -267,7 +281,7 @@ func TestRestartRequiredClassification(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := writeFixture(t, secureConfig("8317"))
+			path := writeFixture(t, secureConfig(t, "8317"))
 			adapter := New(filepath.Join(t.TempDir(), "backups"))
 			snapshot, err := adapter.Read(context.Background(), path)
 			if err != nil {
@@ -285,7 +299,7 @@ func TestRestartRequiredClassification(t *testing.T) {
 }
 
 func TestReadRejectsDuplicateMappingKeys(t *testing.T) {
-	path := writeFixture(t, secureConfig("8317")+"port: 9000\n")
+	path := writeFixture(t, secureConfig(t, "8317")+"port: 9000\n")
 	_, err := New(filepath.Join(t.TempDir(), "backups")).Read(context.Background(), path)
 	assertPMuxCode(t, err, pmuxerr.ConfigUnreadable)
 }
@@ -304,10 +318,11 @@ func TestGeneratedProxyKeyUsesExactly32RandomBytes(t *testing.T) {
 	}
 }
 
-func secureConfig(port string) string {
+func secureConfig(t *testing.T, port string) string {
+	t.Helper()
 	return "host: 127.0.0.1\n" +
 		"port: " + port + "\n" +
-		"auth-dir: /tmp/auth\n" +
+		"auth-dir: " + testAuthDir(t) + "\n" +
 		"api-keys:\n  - sk-real-key-abcdefghijklmnopqrstuvwxyz\n" +
 		"remote-management:\n  allow-remote: false\n" +
 		"ws-auth: true\n"
