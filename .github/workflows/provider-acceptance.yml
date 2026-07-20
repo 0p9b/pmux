@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   live-provider:
-    if: secrets.PMUX_ACCEPTANCE_GEMINI_KEY != '' || secrets.PMUX_ACCEPTANCE_API_KEY != ''
+    if: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY != '' || secrets.PMUX_ACCEPTANCE_API_KEY != '' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
