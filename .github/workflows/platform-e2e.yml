@@ -76,8 +76,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          uid="$(id -u)"
-          launchctl enable "gui/$uid" || true
+          launchctl print "gui/$(id -u)" >/dev/null
       - name: Ensure Task Scheduler service is running
         if: matrix.target == 'windows-amd64'
         shell: pwsh

@@ -133,6 +133,19 @@ func (m *Manager) Install(_ context.Context, spec service.ServiceSpec) error {
 	if err := atomicWrite(m.plistPath, body, 0o600); err != nil {
 		return wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not install the LaunchAgent definition")
 	}
+	for _, path := range []string{
+		filepath.Join(spec.LogDir, spec.InstanceID+".out.log"),
+		filepath.Join(spec.LogDir, spec.InstanceID+".err.log"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			return wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not prepare LaunchAgent log directory")
+		}
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			return wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "could not prepare LaunchAgent log files")
+		}
+		_ = file.Close()
+	}
 	return nil
 }
 
@@ -175,6 +188,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 	if status.State != service.ServiceRunning {
+		_, _ = m.runner.Run(ctx, "/bin/launchctl", "bootout", m.target())
 		if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
 			if !bootstrapAlreadyLoaded(err, out) {
 				return launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")

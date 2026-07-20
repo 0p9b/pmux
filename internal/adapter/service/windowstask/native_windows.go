@@ -274,11 +274,18 @@ func withTaskFolder(ctx context.Context, fn func(*ole.IDispatch, *ole.IDispatch)
 		}
 	}
 	defer ole.CoUninitialize()
-	unknown, err := oleutil.CreateObject("Schedule.Service.1")
-	if err != nil {
-		unknown, err = oleutil.CreateObject("Schedule.Service")
+	var unknown *ole.IUnknown
+	var err error
+	for _, progID := range []string{"TaskScheduler.TaskScheduler", "Schedule.Service.1", "Schedule.Service"} {
+		unknown, err = oleutil.CreateObject(progID)
+		if err == nil && unknown != nil {
+			break
+		}
 	}
-	if err != nil {
+	if err != nil || unknown == nil {
+		if err == nil {
+			err = errors.New("Task Scheduler COM class is unavailable")
+		}
 		return err
 	}
 	defer unknown.Release()
@@ -436,12 +443,19 @@ func comFailure(err error) error {
 }
 
 func taskMissing(err error) bool {
+	if err == nil {
+		return false
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "0x8004130f") ||
+		strings.Contains(strings.ToLower(err.Error()), "task not found") {
+		return true
+	}
 	var oleErr *ole.OleError
 	if !errors.As(err, &oleErr) {
 		return false
 	}
 	switch uint32(oleErr.Code()) {
-	case 0x80070002, 0x80041308, 0x8004130f:
+	case 0x80070002, 0x80041308, 0x8004130f, 0x80020009:
 		return true
 	default:
 		return false

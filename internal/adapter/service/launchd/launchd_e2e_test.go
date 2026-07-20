@@ -24,6 +24,13 @@ import (
 
 const releaseE2EEnvironment = "PMUX_RELEASE_E2E"
 
+const launchdE2EEntitlements = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>com.apple.security.network.client</key><true/>
+  <key>com.apple.security.network.server</key><true/>
+</dict></plist>`
+
 const launchdFakeCoreSource = `package main
 
 import (
@@ -267,7 +274,11 @@ func buildGoBinary(t *testing.T, ctx context.Context, workingDirectory, output s
 
 func adHocSign(t *testing.T, path string) {
 	t.Helper()
-	out, err := exec.Command("codesign", "-s", "-", "-f", path).CombinedOutput()
+	entitlements := filepath.Join(t.TempDir(), "entitlements.plist")
+	if err := os.WriteFile(entitlements, []byte(launchdE2EEntitlements), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("codesign", "-s", "-", "-f", "--entitlements", entitlements, path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("codesign %s: %v\n%s", path, err, out)
 	}
