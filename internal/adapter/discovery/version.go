@@ -23,14 +23,14 @@ import (
 // sockets and named pipes are optional; endpoint absence is not an error.
 func NewLocal() Discoverer {
 	discoverer := Discoverer{
-		Processes: LocalProcessEnumerator{},
-		Services:  newLocalServiceEnumerator(),
-		Listeners: HTTPListenerProber{},
+		Processes:  LocalProcessEnumerator{},
+		Services:   newLocalServiceEnumerator(),
+		Listeners:  HTTPListenerProber{},
 		Containers: newLocalContainerEnumerator(),
 		Versions: VersionDetector{
 			Metadata: SidecarMetadataResolver{},
 			Probe: IsolatedBannerProber{Inner: subproc.VersionProbe{
-				ParentEnv: os.Environ(),
+				ParentEnv:  os.Environ(),
 				EnvOptions: subproc.EnvironmentOptions{GOOS: runtime.GOOS},
 			}},
 		},
@@ -119,7 +119,7 @@ func (p HTTPListenerProber) Probe(ctx context.Context, address string) (PortEvid
 	if err != nil {
 		return PortEvidence{}, pmuxerr.Wrap(err, pmuxerr.ManagementUnreachable, pmuxerr.Environment, "CLIProxyAPI listener is unreachable")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
 	return PortEvidence{Address: address, Healthy: response.StatusCode == http.StatusOK, HTTPStatus: response.StatusCode, CoreVersion: response.Header.Get("X-CPA-VERSION")}, nil
 }

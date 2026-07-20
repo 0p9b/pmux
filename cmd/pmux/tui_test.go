@@ -109,9 +109,9 @@ func TestIncompleteLaunchStaysNoninteractiveForJSON(t *testing.T) {
 func TestLaunchSelectorEligibility(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name string
+		name    string
 		options map[string]any
-		want bool
+		want    bool
 	}{
 		{name: "both omitted", options: map[string]any{"client": "", "model": ""}, want: true},
 		{name: "default Claude for exact model", options: map[string]any{"client": "", "model": "runtime-model"}, want: true},
@@ -157,7 +157,7 @@ func TestFinishShellTUIExecutesHandoffOnlyAfterProgramExit(t *testing.T) {
 	var got app.Invocation
 	snapshot := pmuxtui.Snapshot{
 		Launch: pmuxtui.LaunchSnapshot{
-			ModelID: "runtime-model",
+			ModelID:   "runtime-model",
 			Arguments: []string{"--permission-mode", "plan", "argument with spaces"},
 		},
 	}

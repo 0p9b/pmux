@@ -12,7 +12,7 @@ func TestFactoryImplementsDomainPlatform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var _ domainplatform.Platform = adapter
+	var _ domainplatform.Platform = adapter //nolint:staticcheck
 	if adapter.GOOS() == "" {
 		t.Fatal("factory returned an adapter without an operating-system identifier")
 	}

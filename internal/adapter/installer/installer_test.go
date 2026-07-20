@@ -164,7 +164,6 @@ func TestExtractRefusesArchiveChangedAfterVerification(t *testing.T) {
 	assertNoFiles(t, destination)
 }
 
-
 func TestParseChecksumsRejectsDuplicateAndUnsafeEntries(t *testing.T) {
 	t.Parallel()
 	digest := strings.Repeat("a", 64)

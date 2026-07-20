@@ -1063,7 +1063,7 @@ func (r *Router) serviceLogs(ctx context.Context, in Invocation, sink EventSink,
 		if logErr != nil {
 			return Result{}, ensureTyped(logErr, "PMux could not read service-manager logs.")
 		}
-		defer reader.Close()
+		defer func() { _ = reader.Close() }()
 		scanner := bufio.NewScanner(reader)
 		scanner.Buffer(make([]byte, 4096), 1024*1024)
 		for scanner.Scan() {

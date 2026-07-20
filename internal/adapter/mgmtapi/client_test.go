@@ -118,121 +118,260 @@ func TestClientImplementsEveryConsumedMethod(t *testing.T) {
 	client, _ := newTestClient(t, handler)
 	ctx := context.Background()
 
-	if info, err := client.Health(ctx); err != nil || !info.Healthy || info.Version != "7.2.92" { t.Fatalf("Health: %#v, %v", info, err) }
-	if models, err := client.PublicModels(ctx); err != nil || len(models) != 1 { t.Fatalf("PublicModels: %#v, %v", models, err) }
-	if config, err := client.Config(ctx); err != nil || strings.Contains(string(mustJSON(t, config)), testProxyKey) { t.Fatalf("Config redaction: %#v, %v", config, err) }
-	if _, err := client.ConfigYAML(ctx); err != nil { t.Fatal(err) }
-	if err := client.PutConfigYAML(ctx, []byte("port: 9000\n")); err != nil { t.Fatal(err) }
-
-	setting := management.SettingName("debug")
-	if _, err := client.GetSetting(ctx, setting); err != nil { t.Fatal(err) }
-	if err := client.PutSetting(ctx, setting, management.SettingValue(`true`)); err != nil { t.Fatal(err) }
-	if err := client.PatchSetting(ctx, setting, management.SettingPatch(`{"value":false}`)); err != nil { t.Fatal(err) }
-	if err := client.DeleteSetting(ctx, management.SettingName("proxy-url")); err != nil { t.Fatal(err) }
-
-	keys, err := client.APIKeys(ctx); if err != nil || len(keys) != 1 || strings.Contains(keys[0].Mask, testProxyKey) { t.Fatalf("APIKeys: %#v, %v", keys, err) }
-	if err := client.PutAPIKeys(ctx, []management.SecretValue{"sk-new-secret-value"}); err != nil { t.Fatal(err) }
-	if err := client.PatchAPIKeys(ctx, management.KeyPatch(`{"old":"x","new":"y"}`)); err != nil { t.Fatal(err) }
-	if err := client.DeleteAPIKey(ctx, keys[0].Fingerprint); err != nil { t.Fatal(err) }
-	if usage, err := client.APIKeyUsage(ctx); err != nil || len(usage) != 1 { t.Fatalf("APIKeyUsage: %#v, %v", usage, err) }
-
-	for _, kind := range []management.ProviderKeyKind{management.ProviderGemini, management.ProviderInteractions, management.ProviderClaude, management.ProviderCodex, management.ProviderXAI, management.ProviderVertex, management.ProviderOpenAICompatible} {
-		values, err := client.ProviderKeys(ctx, kind); if err != nil || len(values) != 1 || values[0].Fields["api_key"] == testProxyKey { t.Fatalf("ProviderKeys(%s): %#v, %v", kind, values, err) }
-		if err := client.PutProviderKeys(ctx, kind, []management.ProviderKey{{ID: "two"}}); err != nil { t.Fatal(err) }
-		if err := client.PatchProviderKeys(ctx, kind, management.ProviderKeyPatch(`{"id":"two"}`)); err != nil { t.Fatal(err) }
-		if err := client.DeleteProviderKey(ctx, kind, "two"); err != nil { t.Fatal(err) }
+	if info, err := client.Health(ctx); err != nil || !info.Healthy || info.Version != "7.2.92" {
+		t.Fatalf("Health: %#v, %v", info, err)
+	}
+	if models, err := client.PublicModels(ctx); err != nil || len(models) != 1 {
+		t.Fatalf("PublicModels: %#v, %v", models, err)
+	}
+	if config, err := client.Config(ctx); err != nil || strings.Contains(string(mustJSON(t, config)), testProxyKey) {
+		t.Fatalf("Config redaction: %#v, %v", config, err)
+	}
+	if _, err := client.ConfigYAML(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PutConfigYAML(ctx, []byte("port: 9000\n")); err != nil {
+		t.Fatal(err)
 	}
 
-	if values, err := client.AuthFiles(ctx); err != nil || len(values) != 1 { t.Fatalf("AuthFiles: %#v, %v", values, err) }
-	if values, err := client.AuthFileModels(ctx, "codex-user.json"); err != nil || len(values) != 1 { t.Fatalf("AuthFileModels: %#v, %v", values, err) }
-	if values, err := client.ModelDefinitions(ctx, "codex"); err != nil || len(values) != 1 { t.Fatalf("ModelDefinitions: %#v, %v", values, err) }
-	if err := client.DeleteAuthFiles(ctx, []string{"codex-user.json"}, false); err != nil { t.Fatal(err) }
-	if err := client.PatchAuthFileStatus(ctx, management.AuthFileStatusPatch(`{"name":"codex-user.json"}`)); err != nil { t.Fatal(err) }
-	if err := client.PatchAuthFileFields(ctx, management.AuthFileFieldsPatch(`{"name":"codex-user.json"}`)); err != nil { t.Fatal(err) }
+	setting := management.SettingName("debug")
+	if _, err := client.GetSetting(ctx, setting); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PutSetting(ctx, setting, management.SettingValue(`true`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PatchSetting(ctx, setting, management.SettingPatch(`{"value":false}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteSetting(ctx, management.SettingName("proxy-url")); err != nil {
+		t.Fatal(err)
+	}
 
-	if _, err := client.ExcludedModels(ctx); err != nil { t.Fatal(err) }
-	if err := client.PutExcludedModels(ctx, management.ExcludedModelSet{}); err != nil { t.Fatal(err) }
-	if err := client.PatchExcludedModels(ctx, management.ExcludedModelPatch(`{}`)); err != nil { t.Fatal(err) }
-	if err := client.DeleteExcludedModels(ctx, "codex"); err != nil { t.Fatal(err) }
-	if _, err := client.ModelAliases(ctx); err != nil { t.Fatal(err) }
-	if err := client.PutModelAliases(ctx, management.ModelAliasSet{}); err != nil { t.Fatal(err) }
-	if err := client.PatchModelAliases(ctx, management.ModelAliasPatch(`{}`)); err != nil { t.Fatal(err) }
-	if err := client.DeleteModelAliases(ctx, "codex"); err != nil { t.Fatal(err) }
+	keys, err := client.APIKeys(ctx)
+	if err != nil || len(keys) != 1 || strings.Contains(keys[0].Mask, testProxyKey) {
+		t.Fatalf("APIKeys: %#v, %v", keys, err)
+	}
+	if err := client.PutAPIKeys(ctx, []management.SecretValue{"sk-new-secret-value"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PatchAPIKeys(ctx, management.KeyPatch(`{"old":"x","new":"y"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteAPIKey(ctx, keys[0].Fingerprint); err != nil {
+		t.Fatal(err)
+	}
+	if usage, err := client.APIKeyUsage(ctx); err != nil || len(usage) != 1 {
+		t.Fatalf("APIKeyUsage: %#v, %v", usage, err)
+	}
 
-	for _, provider := range []management.ProviderID{"claude", "codex", "antigravity", "kimi", "xai"} { if _, err := client.BeginOAuth(ctx, provider, true); err != nil { t.Fatalf("BeginOAuth(%s): %v", provider, err) } }
-	if _, err := client.OAuthStatus(ctx, "state"); err != nil { t.Fatal(err) }
-	if err := client.SubmitOAuthCallback(ctx, "http://127.0.0.1/callback?code=secret&state=state"); err != nil { t.Fatal(err) }
-	if err := client.CancelOAuth(ctx, "state"); err != nil { t.Fatal(err) }
+	for _, kind := range []management.ProviderKeyKind{management.ProviderGemini, management.ProviderInteractions, management.ProviderClaude, management.ProviderCodex, management.ProviderXAI, management.ProviderVertex, management.ProviderOpenAICompatible} {
+		values, err := client.ProviderKeys(ctx, kind)
+		if err != nil || len(values) != 1 || values[0].Fields["api_key"] == testProxyKey {
+			t.Fatalf("ProviderKeys(%s): %#v, %v", kind, values, err)
+		}
+		if err := client.PutProviderKeys(ctx, kind, []management.ProviderKey{{ID: "two"}}); err != nil {
+			t.Fatal(err)
+		}
+		if err := client.PatchProviderKeys(ctx, kind, management.ProviderKeyPatch(`{"id":"two"}`)); err != nil {
+			t.Fatal(err)
+		}
+		if err := client.DeleteProviderKey(ctx, kind, "two"); err != nil {
+			t.Fatal(err)
+		}
+	}
 
-	logs, err := client.Logs(ctx, management.LogQuery{Level: "info", Since: time.Unix(1, 0), Tail: 5}); if err != nil || strings.Contains(logs.Records[0].Message, testProxyKey) { t.Fatalf("Logs: %#v, %v", logs, err) }
-	if err := client.DeleteLogs(ctx); err != nil { t.Fatal(err) }
-	if _, err := client.RequestErrorLogs(ctx); err != nil { t.Fatal(err) }
-	if _, err := client.RequestErrorLog(ctx, "name/with +?#"); err != nil { t.Fatal(err) }
-	if _, err := client.RequestLogByID(ctx, "id/with +?#"); err != nil { t.Fatal(err) }
-	if _, err := client.PopUsageQueue(ctx); err != nil { t.Fatal(err) }
+	if values, err := client.AuthFiles(ctx); err != nil || len(values) != 1 {
+		t.Fatalf("AuthFiles: %#v, %v", values, err)
+	}
+	if values, err := client.AuthFileModels(ctx, "codex-user.json"); err != nil || len(values) != 1 {
+		t.Fatalf("AuthFileModels: %#v, %v", values, err)
+	}
+	if values, err := client.ModelDefinitions(ctx, "codex"); err != nil || len(values) != 1 {
+		t.Fatalf("ModelDefinitions: %#v, %v", values, err)
+	}
+	if err := client.DeleteAuthFiles(ctx, []string{"codex-user.json"}, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PatchAuthFileStatus(ctx, management.AuthFileStatusPatch(`{"name":"codex-user.json"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PatchAuthFileFields(ctx, management.AuthFileFieldsPatch(`{"name":"codex-user.json"}`)); err != nil {
+		t.Fatal(err)
+	}
 
-	serviceAccount := t.TempDir()+"/vertex.json"
-	if err := os.WriteFile(serviceAccount, []byte(`{"type":"service_account"}`), 0o600); err != nil { t.Fatal(err) }
-	if _, err := client.ImportVertex(ctx, management.VertexImportRequest{Path: serviceAccount, Prefix: "team"}); err != nil { t.Fatal(err) }
-	if err := client.ResetQuota(ctx, management.ResetQuotaRequest{Name: "codex-user.json"}); err != nil { t.Fatal(err) }
-	if version, err := client.LatestVersion(ctx); err != nil || version != "7.2.93" { t.Fatalf("LatestVersion: %q, %v", version, err) }
-	apiResponse, err := client.APICall(ctx, management.APICallRequest{Method: "GET", URL: "https://api.example/models"}); if err != nil || strings.Contains(string(apiResponse.Body), testProxyKey) || apiResponse.Headers["Authorization"][0] != "********" { t.Fatalf("APICall redaction: %#v, %v", apiResponse, err) }
+	if _, err := client.ExcludedModels(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PutExcludedModels(ctx, management.ExcludedModelSet{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PatchExcludedModels(ctx, management.ExcludedModelPatch(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteExcludedModels(ctx, "codex"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ModelAliases(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PutModelAliases(ctx, management.ModelAliasSet{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.PatchModelAliases(ctx, management.ModelAliasPatch(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.DeleteModelAliases(ctx, "codex"); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, provider := range []management.ProviderID{"claude", "codex", "antigravity", "kimi", "xai"} {
+		if _, err := client.BeginOAuth(ctx, provider, true); err != nil {
+			t.Fatalf("BeginOAuth(%s): %v", provider, err)
+		}
+	}
+	if _, err := client.OAuthStatus(ctx, "state"); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SubmitOAuthCallback(ctx, "http://127.0.0.1/callback?code=secret&state=state"); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.CancelOAuth(ctx, "state"); err != nil {
+		t.Fatal(err)
+	}
+
+	logs, err := client.Logs(ctx, management.LogQuery{Level: "info", Since: time.Unix(1, 0), Tail: 5})
+	if err != nil || strings.Contains(logs.Records[0].Message, testProxyKey) {
+		t.Fatalf("Logs: %#v, %v", logs, err)
+	}
+	if err := client.DeleteLogs(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.RequestErrorLogs(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.RequestErrorLog(ctx, "name/with +?#"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.RequestLogByID(ctx, "id/with +?#"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.PopUsageQueue(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	serviceAccount := t.TempDir() + "/vertex.json"
+	if err := os.WriteFile(serviceAccount, []byte(`{"type":"service_account"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ImportVertex(ctx, management.VertexImportRequest{Path: serviceAccount, Prefix: "team"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.ResetQuota(ctx, management.ResetQuotaRequest{Name: "codex-user.json"}); err != nil {
+		t.Fatal(err)
+	}
+	if version, err := client.LatestVersion(ctx); err != nil || version != "7.2.93" {
+		t.Fatalf("LatestVersion: %q, %v", version, err)
+	}
+	apiResponse, err := client.APICall(ctx, management.APICallRequest{Method: "GET", URL: "https://api.example/models"})
+	if err != nil || strings.Contains(string(apiResponse.Body), testProxyKey) || apiResponse.Headers["Authorization"][0] != "********" {
+		t.Fatalf("APICall redaction: %#v, %v", apiResponse, err)
+	}
 
 	mu.Lock()
 	defer mu.Unlock()
-	if len(seen) < 45 { t.Fatalf("only %d distinct method/path contracts exercised: %#v", len(seen), seen) }
+	if len(seen) < 45 {
+		t.Fatalf("only %d distinct method/path contracts exercised: %#v", len(seen), seen)
+	}
 }
 
 func TestCapabilitiesProbeEndpointsIndependentlyOfVersion(t *testing.T) {
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" { w.Header().Set("X-CPA-VERSION", "0.0.1"); writeJSON(t, w, map[string]string{"status":"ok"}); return }
-		if r.URL.Path == "/v1/models" { writeJSON(t, w, map[string]any{"data": []any{}}); return }
-		if r.URL.Path == managementPrefix+"/config" { writeJSON(t, w, map[string]any{}); return }
-		if r.URL.Path == managementPrefix+"/api-call" { http.NotFound(w, r); return }
-		if r.Method == http.MethodOptions { w.WriteHeader(http.StatusMethodNotAllowed); return }
+		if r.URL.Path == "/healthz" {
+			w.Header().Set("X-CPA-VERSION", "0.0.1")
+			writeJSON(t, w, map[string]string{"status": "ok"})
+			return
+		}
+		if r.URL.Path == "/v1/models" {
+			writeJSON(t, w, map[string]any{"data": []any{}})
+			return
+		}
+		if r.URL.Path == managementPrefix+"/config" {
+			writeJSON(t, w, map[string]any{})
+			return
+		}
+		if r.URL.Path == managementPrefix+"/api-call" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 		writeJSON(t, w, map[string]any{})
 	})
 	capabilities, err := client.Capabilities(context.Background())
-	if err != nil { t.Fatal(err) }
-	if !capabilities["management"] || !capabilities["management-config-yaml"] { t.Fatalf("expected probed capabilities: %#v", capabilities) }
-	if capabilities["management-api-call"] { t.Fatalf("missing endpoint reported available: %#v", capabilities) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !capabilities["management"] || !capabilities["management-config-yaml"] {
+		t.Fatalf("expected probed capabilities: %#v", capabilities)
+	}
+	if capabilities["management-api-call"] {
+		t.Fatalf("missing endpoint reported available: %#v", capabilities)
+	}
 }
 
 func TestManagementAuthIsBearerAndNeverRetried(t *testing.T) {
 	attempts := 0
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		attempts++
-		if r.Header.Get("Authorization") != "Bearer "+testManagementKey { t.Errorf("authorization = %q", r.Header.Get("Authorization")) }
+		if r.Header.Get("Authorization") != "Bearer "+testManagementKey {
+			t.Errorf("authorization = %q", r.Header.Get("Authorization"))
+		}
 		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"error":"`+testManagementKey+`"}`))
+		_, _ = w.Write([]byte(`{"error":"` + testManagementKey + `"}`))
 	})
 	_, err := client.Config(context.Background())
 	assertPMuxCode(t, err, pmuxerr.ManagementAuthRejected)
-	if attempts != 1 { t.Fatalf("auth attempts = %d, want exactly 1", attempts) }
-	if strings.Contains(err.Error(), testManagementKey) { t.Fatal("management secret leaked in error") }
+	if attempts != 1 {
+		t.Fatalf("auth attempts = %d, want exactly 1", attempts)
+	}
+	if strings.Contains(err.Error(), testManagementKey) {
+		t.Fatal("management secret leaked in error")
+	}
 }
 
 func TestManagement404Taxonomy(t *testing.T) {
 	t.Run("individual endpoint absent", func(t *testing.T) {
 		client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == managementPrefix+"/config" { writeJSON(t, w, map[string]any{}); return }
+			if r.URL.Path == managementPrefix+"/config" {
+				writeJSON(t, w, map[string]any{})
+				return
+			}
 			http.NotFound(w, r)
 		})
 		_, err := client.LatestVersion(context.Background())
 		assertPMuxCode(t, err, pmuxerr.UnhandledUpstreamShape)
-		if !strings.Contains(err.Error(), "individual") && !strings.Contains(err.Error(), "requested") { t.Fatalf("endpoint absence not explained: %v", err) }
+		if !strings.Contains(err.Error(), "individual") && !strings.Contains(err.Error(), "requested") {
+			t.Fatalf("endpoint absence not explained: %v", err)
+		}
 	})
 	t.Run("management disabled", func(t *testing.T) {
 		client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
 		_, err := client.LatestVersion(context.Background())
 		assertPMuxCode(t, err, pmuxerr.ManagementUnreachable)
-		if !strings.Contains(strings.ToLower(err.Error()), "disabled") { t.Fatalf("disabled management not explained: %v", err) }
+		if !strings.Contains(strings.ToLower(err.Error()), "disabled") {
+			t.Fatalf("disabled management not explained: %v", err)
+		}
 	})
 	t.Run("ban guidance", func(t *testing.T) {
 		client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusForbidden) })
 		_, err := client.Config(context.Background())
 		assertPMuxCode(t, err, pmuxerr.ManagementAuthRejected)
-		if !strings.Contains(err.Error(), "30 minutes") { t.Fatalf("ban window absent: %v", err) }
+		if !strings.Contains(err.Error(), "30 minutes") {
+			t.Fatalf("ban window absent: %v", err)
+		}
 	})
 }
 
@@ -241,18 +380,25 @@ func TestResponseBoundAndTimeout(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(strings.Repeat("x", 33))) }))
 		defer server.Close()
 		client, err := New(Options{BaseURL: server.URL, ManagementKey: testManagementKey, MaxResponseSize: 32})
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		_, err = client.Config(context.Background())
 		assertPMuxCode(t, err, pmuxerr.UnhandledUpstreamShape)
 	})
 	t.Run("default local timeout", func(t *testing.T) {
 		client, _ := New(Options{BaseURL: "http://127.0.0.1:8317", ManagementKey: testManagementKey})
-		if client.timeout != 2*time.Second { t.Fatalf("timeout = %s", client.timeout) }
+		if client.timeout != 2*time.Second {
+			t.Fatalf("timeout = %s", client.timeout)
+		}
 	})
 	t.Run("deadline taxonomy", func(t *testing.T) {
-		client, server := newTestClient(t, func(w http.ResponseWriter, r *http.Request) { time.Sleep(50*time.Millisecond); writeJSON(t, w, map[string]any{}) })
+		client, server := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+			writeJSON(t, w, map[string]any{})
+		})
 		_ = server
-		client.timeout = 5*time.Millisecond
+		client.timeout = 5 * time.Millisecond
 		_, err := client.Config(context.Background())
 		assertPMuxCode(t, err, pmuxerr.ManagementUnreachable)
 	})
@@ -265,10 +411,18 @@ func TestCentralPathAndQueryEncoding(t *testing.T) {
 		modelName = r.URL.Query().Get("name")
 		writeJSON(t, w, map[string]any{"models": []any{}})
 	})
-	if _, err := client.ModelDefinitions(context.Background(), "channel/with +?#"); err != nil { t.Fatal(err) }
-	if escapedPath != managementPrefix+"/model-definitions/channel%2Fwith%20+%3F%23" { t.Fatalf("escaped path = %q", escapedPath) }
-	if _, err := client.AuthFileModels(context.Background(), "file/with +&?.json"); err != nil { t.Fatal(err) }
-	if modelName != "file/with +&?.json" { t.Fatalf("decoded query = %q", modelName) }
+	if _, err := client.ModelDefinitions(context.Background(), "channel/with +?#"); err != nil {
+		t.Fatal(err)
+	}
+	if escapedPath != managementPrefix+"/model-definitions/channel%2Fwith%20+%3F%23" {
+		t.Fatalf("escaped path = %q", escapedPath)
+	}
+	if _, err := client.AuthFileModels(context.Background(), "file/with +&?.json"); err != nil {
+		t.Fatal(err)
+	}
+	if modelName != "file/with +&?.json" {
+		t.Fatalf("decoded query = %q", modelName)
+	}
 }
 
 func TestUpstreamWireShapes(t *testing.T) {
@@ -302,12 +456,24 @@ func TestUpstreamWireShapes(t *testing.T) {
 		}
 	})
 	ctx := context.Background()
-	if err := client.PutSetting(ctx, management.SettingName("debug"), management.SettingValue(`true`)); err != nil { t.Fatal(err) }
-	if got := strings.TrimSpace(string(scalarBody)); got != `{"value":true}` { t.Fatalf("scalar body = %s", got) }
-	if err := client.PutAPIKeys(ctx, []management.SecretValue{"sk-one", "sk-two"}); err != nil { t.Fatal(err) }
-	if got := strings.TrimSpace(string(keysBody)); got != `["sk-one","sk-two"]` { t.Fatalf("api-key body = %s", got) }
-	if err := client.DeleteAPIKey(ctx, fingerprint("sk-second-secret")); err != nil { t.Fatal(err) }
-	if deleteIndex != "1" { t.Fatalf("delete index = %q", deleteIndex) }
+	if err := client.PutSetting(ctx, management.SettingName("debug"), management.SettingValue(`true`)); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(scalarBody)); got != `{"value":true}` {
+		t.Fatalf("scalar body = %s", got)
+	}
+	if err := client.PutAPIKeys(ctx, []management.SecretValue{"sk-one", "sk-two"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(keysBody)); got != `["sk-one","sk-two"]` {
+		t.Fatalf("api-key body = %s", got)
+	}
+	if err := client.DeleteAPIKey(ctx, fingerprint("sk-second-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if deleteIndex != "1" {
+		t.Fatalf("delete index = %q", deleteIndex)
+	}
 	usage, err := client.APIKeyUsage(ctx)
 	if err != nil || len(usage) != 1 || usage[0].Requests != 5 || usage[0].Fingerprint != fingerprint("sk-usage-secret") {
 		t.Fatalf("usage = %#v, %v", usage, err)
@@ -316,9 +482,15 @@ func TestUpstreamWireShapes(t *testing.T) {
 	if err != nil || page.Next != "cursor-2" || len(page.Records) != 1 || strings.Contains(page.Records[0].Message, testProxyKey) {
 		t.Fatalf("logs = %#v, %v", page, err)
 	}
-	if logsAfter != "1700000000" { t.Fatalf("logs after = %q", logsAfter) }
-	if records, err := client.RequestErrorLogs(ctx); err != nil || len(records) != 1 { t.Fatalf("request errors = %#v, %v", records, err) }
-	if version, err := client.LatestVersion(ctx); err != nil || version != "7.2.93" { t.Fatalf("latest = %q, %v", version, err) }
+	if logsAfter != "1700000000" {
+		t.Fatalf("logs after = %q", logsAfter)
+	}
+	if records, err := client.RequestErrorLogs(ctx); err != nil || len(records) != 1 {
+		t.Fatalf("request errors = %#v, %v", records, err)
+	}
+	if version, err := client.LatestVersion(ctx); err != nil || version != "7.2.93" {
+		t.Fatalf("latest = %q, %v", version, err)
+	}
 }
 
 func TestPutConfigYAMLCompensatesOnVerificationMismatch(t *testing.T) {
@@ -335,14 +507,22 @@ func TestPutConfigYAMLCompensatesOnVerificationMismatch(t *testing.T) {
 		case http.MethodPut:
 			putCount++
 			body, _ := io.ReadAll(r.Body)
-			if putCount == 1 { state = []byte("port: 9999\n") } else { state = body }
+			if putCount == 1 {
+				state = []byte("port: 9999\n")
+			} else {
+				state = body
+			}
 		}
 	})
 	err := client.PutConfigYAML(context.Background(), candidate)
 	assertPMuxCode(t, err, pmuxerr.ConfigMutationConflict)
-	if string(state) != string(prior) { t.Fatalf("state after compensation = %q", state) }
+	if string(state) != string(prior) {
+		t.Fatalf("state after compensation = %q", state)
+	}
 	want := "GET,PUT,GET,PUT,GET"
-	if got := strings.Join(sequence, ","); got != want { t.Fatalf("sequence = %s, want %s", got, want) }
+	if got := strings.Join(sequence, ","); got != want {
+		t.Fatalf("sequence = %s, want %s", got, want)
+	}
 }
 
 func TestPutConfigYAMLDoesNotRetryAfterVerificationAuthFailure(t *testing.T) {
@@ -366,45 +546,63 @@ func TestPutConfigYAMLDoesNotRetryAfterVerificationAuthFailure(t *testing.T) {
 }
 
 func TestErrorsAndReturnedRecordsNeverExposeSecrets(t *testing.T) {
-	secretBody := `{"message":"Bearer `+testManagementKey+` and `+testProxyKey+`"}`
+	secretBody := `{"message":"Bearer ` + testManagementKey + ` and ` + testProxyKey + `"}`
 	client, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(secretBody))
 	})
 	_, err := client.Config(context.Background())
-	if err == nil { t.Fatal("expected error") }
+	if err == nil {
+		t.Fatal("expected error")
+	}
 	var pe *pmuxerr.Error
-	if !errors.As(err, &pe) { t.Fatalf("error type = %T", err) }
+	if !errors.As(err, &pe) {
+		t.Fatalf("error type = %T", err)
+	}
 	serialized := string(mustJSON(t, pe))
 	for _, secret := range []string{testManagementKey, testProxyKey} {
-		if strings.Contains(err.Error(), secret) || strings.Contains(serialized, secret) { t.Fatalf("secret leaked: %q", secret) }
+		if strings.Contains(err.Error(), secret) || strings.Contains(serialized, secret) {
+			t.Fatalf("secret leaked: %q", secret)
+		}
 	}
 }
 
 func writeJSON(t *testing.T, w http.ResponseWriter, value any) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(value); err != nil { t.Error(err) }
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		t.Error(err)
+	}
 }
 
 func mustJSON(t *testing.T, value any) []byte {
 	t.Helper()
 	body, err := json.Marshal(value)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	return body
 }
 
 func assertPMuxCode(t *testing.T, err error, code string) {
 	t.Helper()
-	if err == nil { t.Fatalf("expected %s error", code) }
+	if err == nil {
+		t.Fatalf("expected %s error", code)
+	}
 	var pe *pmuxerr.Error
-	if !errors.As(err, &pe) { t.Fatalf("error type = %T, want *pmuxerr.Error", err) }
-	if pe.Code != code { t.Fatalf("error code = %q, want %q (%v)", pe.Code, code, err) }
+	if !errors.As(err, &pe) {
+		t.Fatalf("error type = %T, want *pmuxerr.Error", err)
+	}
+	if pe.Code != code {
+		t.Fatalf("error code = %q, want %q (%v)", pe.Code, code, err)
+	}
 }
 
 func isProviderPath(value string) bool {
 	for _, kind := range []management.ProviderKeyKind{management.ProviderGemini, management.ProviderInteractions, management.ProviderClaude, management.ProviderCodex, management.ProviderXAI, management.ProviderVertex, management.ProviderOpenAICompatible} {
-		if value == managementPrefix+"/"+string(kind) { return true }
+		if value == managementPrefix+"/"+string(kind) {
+			return true
+		}
 	}
 	return false
 }

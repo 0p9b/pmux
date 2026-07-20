@@ -25,12 +25,12 @@ func TestSubprocessFlagsAreClosedAndExact(t *testing.T) {
 		}
 	}
 	want := map[string][]string{
-		"codex/browser": {"-codex-login"},
-		"codex/device_code": {"-codex-device-login"},
-		"claude/browser": {"-claude-login"},
-		"antigravity/browser": {"-antigravity-login"},
-		"kimi/device_code": {"-kimi-login"},
-		"xai/device_code": {"-xai-login"},
+		"codex/browser":        {"-codex-login"},
+		"codex/device_code":    {"-codex-device-login"},
+		"claude/browser":       {"-claude-login"},
+		"antigravity/browser":  {"-antigravity-login"},
+		"kimi/device_code":     {"-kimi-login"},
+		"xai/device_code":      {"-xai-login"},
 		"vertex/vertex_import": {"-vertex-import"},
 	}
 	if !reflect.DeepEqual(got, want) {

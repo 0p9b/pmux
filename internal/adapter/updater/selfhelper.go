@@ -19,17 +19,17 @@ import (
 const selfUpdateHelperMarker = "__pmux-self-update-helper"
 
 type selfUpdatePlan struct {
-	ParentPID       int    `json:"parent_pid"`
-	ActivePath      string `json:"active_path"`
-	ReplacementPath string `json:"replacement_path"`
-	HelperPath      string `json:"helper_path"`
-	PreviousPath    string `json:"previous_path"`
-	StatusPath      string `json:"status_path"`
-	ActiveSHA256    string `json:"active_sha256"`
+	ParentPID         int    `json:"parent_pid"`
+	ActivePath        string `json:"active_path"`
+	ReplacementPath   string `json:"replacement_path"`
+	HelperPath        string `json:"helper_path"`
+	PreviousPath      string `json:"previous_path"`
+	StatusPath        string `json:"status_path"`
+	ActiveSHA256      string `json:"active_sha256"`
 	ReplacementSHA256 string `json:"replacement_sha256"`
-	HelperSHA256    string `json:"helper_sha256"`
-	CurrentVersion  string `json:"current_version"`
-	NextVersion     string `json:"next_version"`
+	HelperSHA256      string `json:"helper_sha256"`
+	CurrentVersion    string `json:"current_version"`
+	NextVersion       string `json:"next_version"`
 }
 
 type selfUpdateStatus struct {
@@ -181,14 +181,6 @@ func verifyHelperFingerprint(ops selfHelperOps, path, expected, label string) er
 		return fmt.Errorf("%s fingerprint changed", label)
 	}
 	return nil
-}
-
-func writeSelfUpdatePlan(path string, plan selfUpdatePlan) error {
-	payload, err := json.Marshal(plan)
-	if err != nil {
-		return err
-	}
-	return adapterfs.AtomicWritePrivate(path, append(payload, '\n'))
 }
 
 func writeSelfUpdateStatus(path string, status selfUpdateStatus) error {

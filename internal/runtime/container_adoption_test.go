@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	adapterdoctor "github.com/0p9b/pmux/internal/adapter/doctor"
 	"github.com/0p9b/pmux/internal/adapter/discovery"
+	adapterdoctor "github.com/0p9b/pmux/internal/adapter/doctor"
 	adapterplatform "github.com/0p9b/pmux/internal/adapter/platform"
 	"github.com/0p9b/pmux/internal/app"
 	domainclient "github.com/0p9b/pmux/internal/domain/client"
@@ -87,8 +87,8 @@ func TestContainerAdoptionIsReadOnlyAndEveryMutationPathIsRefused(t *testing.T) 
 		t.Fatal(err)
 	}
 	store, err := state.New(state.Paths{
-		Config: filepath.Join(roots.Config, "config.json"),
-		State: filepath.Join(roots.State, "state.json"),
+		Config:  filepath.Join(roots.Config, "config.json"),
+		State:   filepath.Join(roots.State, "state.json"),
 		Secrets: filepath.Join(roots.State, "secrets.json"),
 	})
 	if err != nil {
@@ -107,7 +107,7 @@ func TestContainerAdoptionIsReadOnlyAndEveryMutationPathIsRefused(t *testing.T) 
 			return discovery.Discoverer{
 				Processes: processEnumeratorStub{}, Services: serviceEnumeratorStub{},
 				Containers: containerEnumeratorStub{values: []discovery.ContainerEvidence{container}},
-				Listeners: listenerProbeStub{evidence: discovery.PortEvidence{Address: endpoint, Healthy: true, CoreVersion: "7.2.92"}},
+				Listeners:  listenerProbeStub{evidence: discovery.PortEvidence{Address: endpoint, Healthy: true, CoreVersion: "7.2.92"}},
 			}
 		},
 		serviceFactory: func(context.Context, state.Installation, bool) (service.ServiceManager, error) {
@@ -278,4 +278,3 @@ func assertContainerMutationDenied(t *testing.T, values ...any) {
 		t.Fatalf("container mutation omitted owning-runtime guidance: %v", err)
 	}
 }
-

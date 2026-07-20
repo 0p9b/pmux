@@ -9,7 +9,7 @@ import (
 
 const (
 	moveFileReplaceExisting = 0x1
-	moveFileWriteThrough     = 0x8
+	moveFileWriteThrough    = 0x8
 )
 
 var moveFileEx = syscall.NewLazyDLL("kernel32.dll").NewProc("MoveFileExW")

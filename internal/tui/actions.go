@@ -35,69 +35,69 @@ const (
 	ActionRecommended      ActionID = "dashboard.recommended"
 	ActionSetup            ActionID = "setup.start"
 
-	ActionProvidersList    ActionID = "providers.list"
-	ActionProviderDetails  ActionID = "providers.details"
-	ActionProviderLogin    ActionID = "providers.login"
-	ActionProviderVerify   ActionID = "providers.verify"
-	ActionProviderEnable   ActionID = "providers.enable"
-	ActionProviderDisable  ActionID = "providers.disable"
-	ActionProviderRemove   ActionID = "providers.remove"
+	ActionProvidersList   ActionID = "providers.list"
+	ActionProviderDetails ActionID = "providers.details"
+	ActionProviderLogin   ActionID = "providers.login"
+	ActionProviderVerify  ActionID = "providers.verify"
+	ActionProviderEnable  ActionID = "providers.enable"
+	ActionProviderDisable ActionID = "providers.disable"
+	ActionProviderRemove  ActionID = "providers.remove"
 
-	ActionModelsList       ActionID = "models.list"
-	ActionModelDetails     ActionID = "models.details"
-	ActionModelTest        ActionID = "models.test"
-	ActionModelFavorite    ActionID = "models.favorite"
-	ActionModelUnfavorite  ActionID = "models.unfavorite"
-	ActionModelLaunch      ActionID = "models.launch"
+	ActionModelsList      ActionID = "models.list"
+	ActionModelDetails    ActionID = "models.details"
+	ActionModelTest       ActionID = "models.test"
+	ActionModelFavorite   ActionID = "models.favorite"
+	ActionModelUnfavorite ActionID = "models.unfavorite"
+	ActionModelLaunch     ActionID = "models.launch"
 
-	ActionLaunchRun        ActionID = "launch.run"
-	ActionLaunchPersist    ActionID = "launch.persist"
-	ActionLaunchDoctor     ActionID = "launch.doctor"
+	ActionLaunchRun     ActionID = "launch.run"
+	ActionLaunchPersist ActionID = "launch.persist"
+	ActionLaunchDoctor  ActionID = "launch.doctor"
 
-	ActionDoctorRun        ActionID = "doctor.run"
-	ActionDoctorDetails    ActionID = "doctor.details"
-	ActionDoctorFix        ActionID = "doctor.fix"
-	ActionDoctorFixAll     ActionID = "doctor.fix-all"
-	ActionDoctorBundle     ActionID = "doctor.bundle"
+	ActionDoctorRun     ActionID = "doctor.run"
+	ActionDoctorDetails ActionID = "doctor.details"
+	ActionDoctorFix     ActionID = "doctor.fix"
+	ActionDoctorFixAll  ActionID = "doctor.fix-all"
+	ActionDoctorBundle  ActionID = "doctor.bundle"
 
-	ActionServiceStatus    ActionID = "service.status"
-	ActionServiceStart     ActionID = "service.start"
-	ActionServiceStop      ActionID = "service.stop"
-	ActionServiceRestart   ActionID = "service.restart"
-	ActionServiceInstall   ActionID = "service.install"
-	ActionServiceUninstall ActionID = "service.uninstall"
-	ActionServiceLogs      ActionID = "service.logs"
+	ActionServiceStatus     ActionID = "service.status"
+	ActionServiceStart      ActionID = "service.start"
+	ActionServiceStop       ActionID = "service.stop"
+	ActionServiceRestart    ActionID = "service.restart"
+	ActionServiceInstall    ActionID = "service.install"
+	ActionServiceUninstall  ActionID = "service.uninstall"
+	ActionServiceLogs       ActionID = "service.logs"
 	ActionServiceForeground ActionID = "service.foreground"
 
-	ActionConfigShow       ActionID = "config.show"
-	ActionConfigGet        ActionID = "config.get"
-	ActionConfigSet        ActionID = "config.set"
-	ActionConfigEdit       ActionID = "config.edit"
-	ActionConfigBackup     ActionID = "config.backup"
-	ActionConfigRestore    ActionID = "config.restore"
+	ActionConfigShow    ActionID = "config.show"
+	ActionConfigGet     ActionID = "config.get"
+	ActionConfigSet     ActionID = "config.set"
+	ActionConfigEdit    ActionID = "config.edit"
+	ActionConfigBackup  ActionID = "config.backup"
+	ActionConfigRestore ActionID = "config.restore"
 
-	ActionSettingsShow     ActionID = "settings.show"
-	ActionSettingsGet      ActionID = "settings.get"
-	ActionSettingsSet      ActionID = "settings.set"
-	ActionSettingsBackup   ActionID = "settings.backup"
-	ActionSettingsRestore  ActionID = "settings.restore"
+	ActionSettingsShow    ActionID = "settings.show"
+	ActionSettingsGet     ActionID = "settings.get"
+	ActionSettingsSet     ActionID = "settings.set"
+	ActionSettingsBackup  ActionID = "settings.backup"
+	ActionSettingsRestore ActionID = "settings.restore"
 
-	ActionLogsList         ActionID = "logs.list"
-	ActionLogsFollow       ActionID = "logs.follow"
-	ActionLogsExport       ActionID = "logs.export"
-	ActionLogsClear        ActionID = "logs.clear"
+	ActionLogsList   ActionID = "logs.list"
+	ActionLogsFollow ActionID = "logs.follow"
+	ActionLogsExport ActionID = "logs.export"
+	ActionLogsClear  ActionID = "logs.clear"
 )
 
 // ActionMeta is rendered in contextual help. Command is the canonical §15
 // equivalent and is suitable for documentation; placeholders use angle
 // brackets and are never shell-expanded by the TUI.
 type ActionMeta struct {
-	ID       ActionID
-	Screen   Screen
-	Key      string
-	Label    string
-	Command  []string
-	Mutating bool
+	ID        ActionID
+	Screen    Screen
+	Key       string
+	Label     string
+	Command   []string
+	Mutating  bool
 	Streaming bool
 }
 

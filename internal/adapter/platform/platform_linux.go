@@ -160,4 +160,3 @@ func (p *nativePlatform) SecurePermissions(path string, isDir bool) error {
 func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error {
 	return verifyUnixPermissions(path, isDir)
 }
-

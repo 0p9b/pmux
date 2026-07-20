@@ -91,9 +91,9 @@ func NewNative(options Options) (app.UseCases, error) {
 
 	native := &nativeRuntime{platform: platform, roots: roots, store: store, http: options.HTTPClient, stdin: valueReader(options.Stdin, os.Stdin), stdout: valueWriter(options.Stdout, os.Stdout), stderr: valueWriter(options.Stderr, os.Stderr), foreground: make(map[string]*foreground.Manager)}
 	installAdapter, err := installer.New(installer.Options{
-		Target: domaininstall.Target{OS: goruntime.GOOS, Arch: goruntime.GOARCH},
-		DataRoot: roots.Data,
-		HTTPClient: options.HTTPClient,
+		Target:         domaininstall.Target{OS: goruntime.GOOS, Arch: goruntime.GOARCH},
+		DataRoot:       roots.Data,
+		HTTPClient:     options.HTTPClient,
 		RestoreService: native.restoreManagedServiceCheckpoint,
 	})
 	if err != nil {
@@ -708,7 +708,7 @@ func (n *nativeRuntime) Test(ctx context.Context, installation state.Installatio
 	if err != nil {
 		return nil, pmuxerr.Wrap(err, pmuxerr.ManagementUnreachable, pmuxerr.Environment, "The local model test request failed.")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
 	if err != nil {
 		return nil, pmuxerr.Wrap(err, pmuxerr.ManagementUnreachable, pmuxerr.Environment, "The local model test response could not be read.")
@@ -878,7 +878,7 @@ func (n *nativeRuntime) verifyProxyKey(ctx context.Context, installation state.I
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ManagementUnreachable, pmuxerr.Environment, "Authenticated proxy verification could not reach CLIProxyAPI.")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
 	if response.Header.Get("X-Cpa-Safe-Mode") != "" {
 		return actionable(pmuxerr.ConfigSafeMode, "CLIProxyAPI remained in safe mode after the proxy-key change.", "Restore the prior configuration and inspect `pmux doctor`.")
@@ -1592,7 +1592,7 @@ func (s *doctorSource) SafeMode(ctx context.Context) (adapterdoctor.SafeModeFact
 		if requestErr != nil {
 			return fact, requestErr
 		}
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		fact.HTTPStatus = response.StatusCode
 		fact.Header = response.Header.Get("X-Cpa-Safe-Mode")
 		fact.Authenticated = response.StatusCode >= 200 && response.StatusCode < 300 && fact.Header == ""

@@ -13,16 +13,16 @@ import (
 type SetupStage string
 
 const (
-	SetupChooseMode     SetupStage = "choose-mode"
-	SetupAdoptPaths     SetupStage = "adopt-paths"
-	SetupCore           SetupStage = "core"
-	SetupProviderOffer  SetupStage = "provider-offer"
-	SetupProviderSelect SetupStage = "provider-select"
-	SetupProviderAuth   SetupStage = "provider-auth"
-	SetupModelSelect    SetupStage = "model-select"
+	SetupChooseMode      SetupStage = "choose-mode"
+	SetupAdoptPaths      SetupStage = "adopt-paths"
+	SetupCore            SetupStage = "core"
+	SetupProviderOffer   SetupStage = "provider-offer"
+	SetupProviderSelect  SetupStage = "provider-select"
+	SetupProviderAuth    SetupStage = "provider-auth"
+	SetupModelSelect     SetupStage = "model-select"
 	SetupClientPreflight SetupStage = "client-preflight"
-	SetupLaunchOffer    SetupStage = "launch-offer"
-	SetupComplete       SetupStage = "complete"
+	SetupLaunchOffer     SetupStage = "launch-offer"
+	SetupComplete        SetupStage = "complete"
 )
 
 type SetupActionKind string
@@ -428,5 +428,5 @@ func stageLabel(stage SetupStage) string {
 }
 
 func (m *SetupModel) Progress() SetupProgress { return m.progress }
-func (m *SetupModel) LaunchRequested() bool { return m.launch }
-func (m *SetupModel) Canceled() bool { return m.canceled }
+func (m *SetupModel) LaunchRequested() bool   { return m.launch }
+func (m *SetupModel) Canceled() bool          { return m.canceled }

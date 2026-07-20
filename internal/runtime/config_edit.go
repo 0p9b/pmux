@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -66,8 +66,10 @@ func (n *nativeRuntime) Edit(ctx context.Context, request app.ConfigEditRequest)
 	}
 	tempPath := temp.Name()
 	defer os.Remove(tempPath)
-	if err := temp.Chmod(0o600); err == nil {
+	if chmodErr := temp.Chmod(0o600); chmodErr == nil {
 		_, err = temp.Write(before)
+	} else {
+		err = chmodErr
 	}
 	if closeErr := temp.Close(); err == nil {
 		err = closeErr
@@ -186,12 +188,24 @@ func confirmEdit(request app.ConfigEditRequest, diff string) (bool, error) {
 
 func configPatchDifference(before, after domainconfig.Config) []domainconfig.PatchOp {
 	ops := make([]domainconfig.PatchOp, 0, 6)
-	if before.Host != after.Host { ops = append(ops, domainconfig.PatchOp{Path: "host", Value: after.Host}) }
-	if before.Port != after.Port { ops = append(ops, domainconfig.PatchOp{Path: "port", Value: after.Port}) }
-	if before.AuthDir != after.AuthDir { ops = append(ops, domainconfig.PatchOp{Path: "auth-dir", Value: after.AuthDir}) }
-	if before.WSAuth != after.WSAuth { ops = append(ops, domainconfig.PatchOp{Path: "ws-auth", Value: after.WSAuth}) }
-	if before.ManagementLocal != after.ManagementLocal { ops = append(ops, domainconfig.PatchOp{Path: "remote-management.allow-remote", Value: !after.ManagementLocal}) }
-	if !reflect.DeepEqual(before.APIKeys, after.APIKeys) { ops = append(ops, domainconfig.PatchOp{Path: "api-keys", Value: after.APIKeys}) }
+	if before.Host != after.Host {
+		ops = append(ops, domainconfig.PatchOp{Path: "host", Value: after.Host})
+	}
+	if before.Port != after.Port {
+		ops = append(ops, domainconfig.PatchOp{Path: "port", Value: after.Port})
+	}
+	if before.AuthDir != after.AuthDir {
+		ops = append(ops, domainconfig.PatchOp{Path: "auth-dir", Value: after.AuthDir})
+	}
+	if before.WSAuth != after.WSAuth {
+		ops = append(ops, domainconfig.PatchOp{Path: "ws-auth", Value: after.WSAuth})
+	}
+	if before.ManagementLocal != after.ManagementLocal {
+		ops = append(ops, domainconfig.PatchOp{Path: "remote-management.allow-remote", Value: !after.ManagementLocal})
+	}
+	if !reflect.DeepEqual(before.APIKeys, after.APIKeys) {
+		ops = append(ops, domainconfig.PatchOp{Path: "api-keys", Value: after.APIKeys})
+	}
 	return ops
 }
 
@@ -365,11 +379,13 @@ func replacePrivateFile(path string, body []byte) error {
 	}
 	tempPath := temp.Name()
 	defer os.Remove(tempPath)
-	if err := temp.Chmod(0o600); err == nil {
+	if chmodErr := temp.Chmod(0o600); chmodErr == nil {
 		_, err = temp.Write(body)
 		if err == nil {
 			err = temp.Sync()
 		}
+	} else {
+		err = chmodErr
 	}
 	if closeErr := temp.Close(); err == nil {
 		err = closeErr

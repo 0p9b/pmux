@@ -58,11 +58,11 @@ func (e *Engine) activateSelf(_ context.Context, result Result, current, candida
 	plan := selfUpdatePlan{
 		ParentPID: os.Getpid(), ActivePath: current, ReplacementPath: replacement,
 		HelperPath: helper, PreviousPath: current + ".pmux-previous",
-		StatusPath: current + ".pmux-update-status.json",
-		ActiveSHA256: hex.EncodeToString(activeHash[:]),
+		StatusPath:        current + ".pmux-update-status.json",
+		ActiveSHA256:      hex.EncodeToString(activeHash[:]),
 		ReplacementSHA256: hex.EncodeToString(replacementHash[:]),
-		HelperSHA256: hex.EncodeToString(helperHash[:]),
-		CurrentVersion: currentVersion, NextVersion: nextVersion,
+		HelperSHA256:      hex.EncodeToString(helperHash[:]),
+		CurrentVersion:    currentVersion, NextVersion: nextVersion,
 	}
 	if err := writeSelfUpdatePlan(planPath, plan); err != nil {
 		return result, normalize(err, pmuxerr.InstallRollbackAttempted, "Could not write the private Windows self-update plan.")
@@ -87,7 +87,7 @@ func launchDetachedSelfHelper(helper, planPath string) error {
 	cmd.Stderr = nil
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: windows.DETACHED_PROCESS | windows.CREATE_NEW_PROCESS_GROUP,
-		HideWindow: true,
+		HideWindow:    true,
 	}
 	if err := cmd.Start(); err != nil {
 		return err

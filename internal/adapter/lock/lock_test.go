@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
 	"github.com/0p9b/pmux/internal/pmuxerr"
 )
 
@@ -20,7 +21,7 @@ func TestConcurrentMutationRejectedAndReadOnlyUnaffected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer first.Release()
+	defer func() { _ = first.Release() }()
 
 	_, err = manager.TryAcquire("second mutation")
 	if err == nil {
@@ -67,7 +68,7 @@ func TestLockHolderDeath(t *testing.T) {
 		if err != nil {
 			os.Exit(3)
 		}
-		defer handle.Release()
+		defer func() { _ = handle.Release() }()
 		if err := os.WriteFile(ready, []byte("ready"), 0o600); err != nil {
 			os.Exit(4)
 		}

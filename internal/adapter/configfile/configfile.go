@@ -23,7 +23,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-
 // Adapter applies semantic patches to one CLIProxyAPI configuration file. The
 // backup directory is the canonical per-instance backup directory.
 type Adapter struct {
@@ -58,7 +57,6 @@ func generateProxyKey(random io.Reader) (string, error) {
 	}
 	return "sk-" + hex.EncodeToString(material), nil
 }
-
 
 // IsTemplateAPIKey reports keys known to put CLIProxyAPI into safe mode, plus
 // obvious empty/template shapes. It deliberately does not classify arbitrary
@@ -329,7 +327,6 @@ func restorePrior(path string, prior []byte) error {
 	return nil
 }
 
-
 func parseDocument(body []byte) (*yaml.Node, error) {
 	var doc yaml.Node
 	dec := yaml.NewDecoder(bytes.NewReader(body))
@@ -523,7 +520,9 @@ func integer(value any) (int, bool) {
 	case int64:
 		return int(v), true
 	case uint:
-		if uint64(v) > uint64(^uint(0)>>1) { return 0, false }
+		if uint64(v) > uint64(^uint(0)>>1) {
+			return 0, false
+		}
 		return int(v), true
 	case uint8:
 		return int(v), true
@@ -532,7 +531,9 @@ func integer(value any) (int, bool) {
 	case uint32:
 		return int(v), true
 	case uint64:
-		if v > uint64(^uint(0)>>1) { return 0, false }
+		if v > uint64(^uint(0)>>1) {
+			return 0, false
+		}
 		return int(v), true
 	default:
 		return 0, false
@@ -655,7 +656,6 @@ func renderDocument(doc *yaml.Node) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-
 func redactedDiff(ops []domainconfig.PatchOp) string {
 	var out strings.Builder
 	for _, op := range ops {
@@ -705,6 +705,8 @@ func wrapCanceled(cause error) error {
 }
 
 func joinPath(prefix, name string) string {
-	if prefix == "" { return name }
+	if prefix == "" {
+		return name
+	}
 	return prefix + "." + name
 }

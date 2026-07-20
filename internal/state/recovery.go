@@ -9,10 +9,10 @@ import (
 )
 
 type RecoveryNotice struct {
-	Kind         string `json:"kind"`
-	CorruptPath  string `json:"corrupt_path"`
-	BackupPath   string `json:"backup_path"`
-	Message      string `json:"message"`
+	Kind        string `json:"kind"`
+	CorruptPath string `json:"corrupt_path"`
+	BackupPath  string `json:"backup_path"`
+	Message     string `json:"message"`
 }
 
 // RecoveryNeeded tells runtime composition that no valid state backup exists.

@@ -113,22 +113,22 @@ type MutationLocker interface {
 type Stage string
 
 const (
-	StageResolve          Stage = "resolve"
-	StageDownloadArchive Stage = "download-archive"
+	StageResolve           Stage = "resolve"
+	StageDownloadArchive   Stage = "download-archive"
 	StageDownloadChecksums Stage = "download-checksums"
-	StageVerifyChecksum  Stage = "verify-checksum"
-	StageExtract         Stage = "extract"
-	StageVerifyExecutable Stage = "verify-executable"
-	StagePreflight       Stage = "preflight"
-	StageStopService     Stage = "stop-service"
-	StageInstallVersion  Stage = "install-version"
-	StageSwitchPointer   Stage = "switch-pointer"
-	StageActivate        Stage = "activate"
-	StageStartService    Stage = "start-service"
-	StageHealth          Stage = "health"
-	StageAuthenticate    Stage = "authenticate"
-	StageModels          Stage = "models"
-	StagePostflight      Stage = "postflight"
+	StageVerifyChecksum    Stage = "verify-checksum"
+	StageExtract           Stage = "extract"
+	StageVerifyExecutable  Stage = "verify-executable"
+	StagePreflight         Stage = "preflight"
+	StageStopService       Stage = "stop-service"
+	StageInstallVersion    Stage = "install-version"
+	StageSwitchPointer     Stage = "switch-pointer"
+	StageActivate          Stage = "activate"
+	StageStartService      Stage = "start-service"
+	StageHealth            Stage = "health"
+	StageAuthenticate      Stage = "authenticate"
+	StageModels            Stage = "models"
+	StagePostflight        Stage = "postflight"
 )
 
 type Option func(*Engine)

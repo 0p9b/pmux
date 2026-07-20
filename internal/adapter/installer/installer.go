@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sync"
 	"strings"
+	"sync"
 
 	domain "github.com/0p9b/pmux/internal/domain/install"
 	"github.com/0p9b/pmux/internal/pmuxerr"
@@ -45,14 +45,14 @@ type Options struct {
 }
 
 type Adapter struct {
-	target     domain.Target
-	dataRoot   string
-	httpClient *http.Client
-	baseURL    string
-	verifiedMu sync.Mutex
-	verified   map[string][32]byte
-	recoveryMu   sync.Mutex
-	recoveryHeld bool
+	target         domain.Target
+	dataRoot       string
+	httpClient     *http.Client
+	baseURL        string
+	verifiedMu     sync.Mutex
+	verified       map[string][32]byte
+	recoveryMu     sync.Mutex
+	recoveryHeld   bool
 	restoreService func(context.Context, ServiceCheckpoint) error
 
 	previousCurrent string
@@ -207,7 +207,7 @@ func (a *Adapter) Download(ctx context.Context, release domain.Release, destinat
 		}
 		return domain.DownloadedAsset{}, pmuxerr.Wrap(err, pmuxerr.InstallDownloadFailed, pmuxerr.Environment, "CLIProxyAPI asset download failed")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return domain.DownloadedAsset{}, pmuxerr.New(pmuxerr.InstallDownloadFailed, pmuxerr.Upstream, fmt.Sprintf("CLIProxyAPI asset download failed with HTTP %d", resp.StatusCode))
 	}
@@ -257,7 +257,7 @@ func (a *Adapter) DownloadChecksums(ctx context.Context, release domain.Release)
 		}
 		return nil, pmuxerr.Wrap(err, pmuxerr.InstallDownloadFailed, pmuxerr.Environment, "checksums.txt download failed")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, pmuxerr.New(pmuxerr.InstallDownloadFailed, pmuxerr.Upstream, fmt.Sprintf("checksums.txt download failed with HTTP %d", resp.StatusCode))
 	}
@@ -502,7 +502,7 @@ func extractTarGZ(ctx context.Context, archivePath, executable, output string) e
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.InstallIntegrityFailed, pmuxerr.Upstream, "verified archive is not valid gzip")
 	}
-	defer compressed.Close()
+	defer func() { _ = compressed.Close() }()
 	reader := tar.NewReader(&contextReader{ctx: ctx, r: compressed})
 	found := false
 	for {
@@ -523,7 +523,7 @@ func extractTarGZ(ctx context.Context, archivePath, executable, output string) e
 		switch header.Typeflag {
 		case tar.TypeDir:
 			continue
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 		default:
 			return pmuxerr.New(pmuxerr.InstallIntegrityFailed, pmuxerr.Upstream, fmt.Sprintf("archive entry %q is a link or special file; refusing to extract", header.Name))
 		}
@@ -552,7 +552,7 @@ func extractZIP(ctx context.Context, archivePath, executable, output string) err
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.InstallIntegrityFailed, pmuxerr.Upstream, "verified archive is not valid zip")
 	}
-	defer archive.Close()
+	defer func() { _ = archive.Close() }()
 	found := false
 	for _, entry := range archive.File {
 		clean, err := safeArchivePath(entry.Name)
@@ -665,7 +665,7 @@ func (a *Adapter) VerifyExecutable(ctx context.Context, binary domain.ExtractedB
 		if err != nil {
 			return pmuxerr.Wrap(err, pmuxerr.InstallUnsupportedTarget, pmuxerr.Upstream, "extracted ELF executable is malformed")
 		}
-		defer parsed.Close()
+		defer func() { _ = parsed.Close() }()
 		expected := elf.EM_X86_64
 		if target.Arch == "arm64" {
 			expected = elf.EM_AARCH64
@@ -680,7 +680,7 @@ func (a *Adapter) VerifyExecutable(ctx context.Context, binary domain.ExtractedB
 		if err != nil {
 			return wrong("expected valid Mach-O executable")
 		}
-		defer parsed.Close()
+		defer func() { _ = parsed.Close() }()
 		expected := macho.CpuAmd64
 		if target.Arch == "arm64" {
 			expected = macho.CpuArm64
@@ -698,7 +698,7 @@ func (a *Adapter) VerifyExecutable(ctx context.Context, binary domain.ExtractedB
 		if err != nil {
 			return pmuxerr.Wrap(err, pmuxerr.InstallUnsupportedTarget, pmuxerr.Upstream, "extracted PE executable is malformed")
 		}
-		defer parsed.Close()
+		defer func() { _ = parsed.Close() }()
 		expected := uint16(pe.IMAGE_FILE_MACHINE_AMD64)
 		if target.Arch == "arm64" {
 			expected = pe.IMAGE_FILE_MACHINE_ARM64
@@ -836,7 +836,7 @@ func copyFileContext(ctx context.Context, source, destination string, mode os.Fi
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.InstallRollbackAttempted, pmuxerr.Environment, "could not open extracted executable for installation")
 	}
-	defer input.Close()
+	defer func() { _ = input.Close() }()
 	output, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.InstallRollbackAttempted, pmuxerr.Environment, "could not create managed executable")
@@ -896,7 +896,7 @@ func syncDir(path string) error {
 	if err != nil {
 		return err
 	}
-	defer directory.Close()
+	defer func() { _ = directory.Close() }()
 	return directory.Sync()
 }
 

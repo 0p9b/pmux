@@ -6,22 +6,22 @@ import (
 	"net"
 	"path/filepath"
 	"strings"
-	"unicode/utf8"
 	"time"
+	"unicode/utf8"
 
 	"github.com/0p9b/pmux/internal/pmuxerr"
 )
 
 type Config struct {
-	Version             int               `json:"version"`
-	Theme               string            `json:"theme,omitempty"`
-	UpdateCheck         bool              `json:"update_check,omitempty"`
-	DefaultInstallation string            `json:"default_installation,omitempty"`
-	DefaultClient       string            `json:"default_client,omitempty"`
-	DefaultModel        string            `json:"default_model,omitempty"`
-	HighLatencyMode     *bool             `json:"high_latency_mode,omitempty"`
-	LogLineLimit        int               `json:"log_line_limit,omitempty"`
-	Visual              map[string]string `json:"visual,omitempty"`
+	Version                int               `json:"version"`
+	Theme                  string            `json:"theme,omitempty"`
+	UpdateCheck            bool              `json:"update_check,omitempty"`
+	DefaultInstallation    string            `json:"default_installation,omitempty"`
+	DefaultClient          string            `json:"default_client,omitempty"`
+	DefaultModel           string            `json:"default_model,omitempty"`
+	HighLatencyMode        *bool             `json:"high_latency_mode,omitempty"`
+	LogLineLimit           int               `json:"log_line_limit,omitempty"`
+	Visual                 map[string]string `json:"visual,omitempty"`
 	PersistentClaudeModels map[string]string `json:"persistent_claude_models,omitempty"`
 }
 
@@ -33,20 +33,20 @@ type State struct {
 }
 
 type Installation struct {
-	ID                string         `json:"id"`
-	Kind              string         `json:"kind"`
-	BinaryPath        string         `json:"binary_path"`
-	BinarySHA256      string         `json:"binary_sha256,omitempty"`
-	ConfigPath        string         `json:"config_path"`
-	ProxyKeyRef       SecretReference `json:"proxy_key_ref"`
-	AuthDir           string         `json:"auth_dir"`
-	RuntimeDir        string         `json:"runtime_dir"`
-	Host              string         `json:"host"`
-	Port              int            `json:"port"`
-	ServiceBackend    string         `json:"service_backend"`
-	CoreVersionSeen   string         `json:"core_version_seen,omitempty"`
-	ObservedAt        time.Time      `json:"observed_at,omitempty"`
-	Container         *ContainerMetadata `json:"container,omitempty"`
+	ID              string             `json:"id"`
+	Kind            string             `json:"kind"`
+	BinaryPath      string             `json:"binary_path"`
+	BinarySHA256    string             `json:"binary_sha256,omitempty"`
+	ConfigPath      string             `json:"config_path"`
+	ProxyKeyRef     SecretReference    `json:"proxy_key_ref"`
+	AuthDir         string             `json:"auth_dir"`
+	RuntimeDir      string             `json:"runtime_dir"`
+	Host            string             `json:"host"`
+	Port            int                `json:"port"`
+	ServiceBackend  string             `json:"service_backend"`
+	CoreVersionSeen string             `json:"core_version_seen,omitempty"`
+	ObservedAt      time.Time          `json:"observed_at,omitempty"`
+	Container       *ContainerMetadata `json:"container,omitempty"`
 }
 
 type ContainerMetadata struct {
@@ -91,9 +91,9 @@ func validateState(value State) error {
 			continue
 		}
 		for name, path := range map[string]string{
-			"binary": installation.BinaryPath,
-			"config": installation.ConfigPath,
-			"auth": installation.AuthDir,
+			"binary":  installation.BinaryPath,
+			"config":  installation.ConfigPath,
+			"auth":    installation.AuthDir,
 			"runtime": installation.RuntimeDir,
 		} {
 			if path == "" || !filepath.IsAbs(path) {

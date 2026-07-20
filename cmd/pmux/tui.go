@@ -16,9 +16,9 @@ import (
 )
 
 type tuiFacade struct {
-	useCases app.UseCases
+	useCases  app.UseCases
 	configDir string
-	snapshot pmuxtui.Snapshot
+	snapshot  pmuxtui.Snapshot
 }
 
 type tuiRequest struct {
@@ -40,11 +40,11 @@ func runTUI(ctx context.Context, deps dependencies, flags *globalFlags, request 
 	}
 	facade := &tuiFacade{useCases: deps.UseCases, configDir: flags.ConfigDir, snapshot: snapshot}
 	options := pmuxtui.Options{
-		Context: ctx,
+		Context:       ctx,
 		InitialScreen: initialScreen,
-		Setup: &setupWizardFacade{useCases: deps.UseCases, configDir: flags.ConfigDir, out: deps.Out},
-		NoColor: os.Getenv("NO_COLOR") != "",
-		Plain: os.Getenv("TERM") == "dumb",
+		Setup:         &setupWizardFacade{useCases: deps.UseCases, configDir: flags.ConfigDir, out: deps.Out},
+		NoColor:       os.Getenv("NO_COLOR") != "",
+		Plain:         os.Getenv("TERM") == "dumb",
 		ReducedMotion: os.Getenv("PMUX_NO_ANIMATION") == "1",
 	}
 	model := pmuxtui.New(facade, facade.snapshot, options)
@@ -155,7 +155,7 @@ func (f *tuiFacade) Execute(ctx context.Context, request pmuxtui.ActionRequest) 
 				options["protected_input"] = bytes.NewReader(request.Secret)
 			case "vertex_import":
 				if len(request.Arguments) < 3 {
-					return f.snapshot, fmt.Errorf("Vertex service-account path is required")
+					return f.snapshot, fmt.Errorf("vertex service-account path is required")
 				}
 				options["service_account"] = request.Arguments[2]
 				if len(request.Arguments) > 3 {
@@ -474,22 +474,34 @@ func text(value any) string {
 	return fmt.Sprint(value)
 }
 func boolValue(value any) bool { value, _ = value.(bool); return value == true }
-func intValue(value any) int { if number, ok := value.(float64); ok { return int(number) }; return 0 }
+func intValue(value any) int {
+	if number, ok := value.(float64); ok {
+		return int(number)
+	}
+	return 0
+}
 func stringSlice(value any) []string {
 	rows, _ := value.([]any)
 	out := make([]string, 0, len(rows))
-	for _, row := range rows { out = append(out, text(row)) }
+	for _, row := range rows {
+		out = append(out, text(row))
+	}
 	return out
 }
 func displayStatus(value string) pmuxtui.Status {
 	lower := strings.ToLower(value)
 	kind := pmuxtui.StatusUnknown
-	switch {
-	case lower == "true" || lower == "running" || lower == "authenticated" || lower == "pass" || lower == "ok": kind = pmuxtui.StatusHealthy
-	case lower == "stopped" || lower == "not-installed" || lower == "not-configured": kind = pmuxtui.StatusStopped
-	case lower == "warning" || lower == "warn" || lower == "unknown": kind = pmuxtui.StatusWarning
-	case lower == "working" || lower == "starting" || lower == "stopping": kind = pmuxtui.StatusWorking
-	case lower == "false" || lower == "failed" || lower == "fail" || lower == "unavailable": kind = pmuxtui.StatusError
+	switch lower {
+	case "true", "running", "authenticated", "pass", "ok":
+		kind = pmuxtui.StatusHealthy
+	case "stopped", "not-installed", "not-configured":
+		kind = pmuxtui.StatusStopped
+	case "warning", "warn", "unknown":
+		kind = pmuxtui.StatusWarning
+	case "working", "starting", "stopping":
+		kind = pmuxtui.StatusWorking
+	case "false", "failed", "fail", "unavailable":
+		kind = pmuxtui.StatusError
 	}
 	return pmuxtui.Status{Kind: kind, Text: value}
 }

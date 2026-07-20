@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/0p9b/pmux/internal/app"
 	"github.com/0p9b/pmux/internal/adapter/updater"
-	pmuxruntime "github.com/0p9b/pmux/internal/runtime"
+	"github.com/0p9b/pmux/internal/app"
 	"github.com/0p9b/pmux/internal/pmuxerr"
+	pmuxruntime "github.com/0p9b/pmux/internal/runtime"
 )
 
 func main() {
@@ -40,8 +40,8 @@ func main() {
 		})
 	}
 	deps := dependencies{
-		UseCases: useCases,
-		RunTUI: runTUI,
+		UseCases:    useCases,
+		RunTUI:      runTUI,
 		RunSetupTUI: runSetupTUI,
 		IsTerminal: func() bool {
 			info, err := os.Stdin.Stat()

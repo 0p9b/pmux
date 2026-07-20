@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	maxProcessArgBytes  = 4 << 20
-	maxProcessArgCount  = 4096
+	maxProcessArgBytes     = 4 << 20
+	maxProcessArgCount     = 4096
 	maxEnumeratedProcesses = 65536
 )
 

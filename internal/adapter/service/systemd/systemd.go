@@ -23,8 +23,8 @@ import (
 )
 
 const OwnershipMarker = "# Managed by PMux"
-var instanceIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
 
+var instanceIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
 
 type Runner interface {
 	Run(ctx context.Context, executable string, args ...string) ([]byte, error)
@@ -88,7 +88,9 @@ func New(instanceID, unitDir string, runner Runner, checker health.Checker) *Man
 
 func (m *Manager) Backend() service.ServiceBackend { return service.BackendSystemdUser }
 
-func (m *Manager) identity() string { return service.Identity(service.BackendSystemdUser, m.instanceID) }
+func (m *Manager) identity() string {
+	return service.Identity(service.BackendSystemdUser, m.instanceID)
+}
 func (m *Manager) unitPath() string { return filepath.Join(m.unitDir, m.identity()) }
 
 func (m *Manager) Detect(ctx context.Context) (service.ServiceStatus, error) {
@@ -254,9 +256,9 @@ func (m *Manager) Status(ctx context.Context) (service.ServiceStatus, error) {
 	}
 	properties := parseProperties(output)
 	status := service.ServiceStatus{
-		Backend: service.BackendSystemdUser,
-		State: mapState(properties["LoadState"], properties["ActiveState"]),
-		Detail: strings.TrimSpace(properties["SubState"]),
+		Backend:     service.BackendSystemdUser,
+		State:       mapState(properties["LoadState"], properties["ActiveState"]),
+		Detail:      strings.TrimSpace(properties["SubState"]),
 		CoreVersion: health.UnknownVersion,
 	}
 	status.PID, _ = strconv.Atoi(properties["MainPID"])
@@ -430,12 +432,11 @@ func mapState(load, active string) service.ServiceState {
 	}
 }
 
-
 func newRedactingReader(source io.ReadCloser) io.ReadCloser {
 	reader, writer := io.Pipe()
 	go func() {
-		defer writer.Close()
-		defer source.Close()
+		defer func() { _ = writer.Close() }()
+		defer func() { _ = source.Close() }()
 		scanner := bufio.NewScanner(source)
 		scanner.Buffer(make([]byte, 4096), 1024*1024)
 		for scanner.Scan() {

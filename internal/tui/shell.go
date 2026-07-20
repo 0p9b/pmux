@@ -19,7 +19,7 @@ const (
 )
 
 type Options struct {
-	InitialScreen  Screen
+	InitialScreen Screen
 	Context       context.Context
 	Setup         SetupFacade
 	NoColor       bool
@@ -29,30 +29,30 @@ type Options struct {
 }
 
 type Shell struct {
-	ctx      context.Context
-	facade   Facade
-	snapshot Snapshot
-	screen   Screen
-	width    int
-	height   int
-	selected [9]int
-	focus    int
-	help     bool
-	search   bool
-	query    string
-	input    *inputPrompt
-	busy     bool
-	cancel   context.CancelFunc
-	lastErr  string
-	actionEvent ActionEvent
-	pending  *ActionMeta
-	pendingArgs []string
-	pendingSecret []byte
-	handoff *ActionRequest
+	ctx             context.Context
+	facade          Facade
+	snapshot        Snapshot
+	screen          Screen
+	width           int
+	height          int
+	selected        [9]int
+	focus           int
+	help            bool
+	search          bool
+	query           string
+	input           *inputPrompt
+	busy            bool
+	cancel          context.CancelFunc
+	lastErr         string
+	actionEvent     ActionEvent
+	pending         *ActionMeta
+	pendingArgs     []string
+	pendingSecret   []byte
+	handoff         *ActionRequest
 	protectedWriter *io.PipeWriter
-	confirm  string
-	palette  palette
-	options  Options
+	confirm         string
+	palette         palette
+	options         Options
 }
 
 type facadeResultMsg struct {
@@ -82,14 +82,14 @@ func New(facade Facade, cached Snapshot, options Options) *Shell {
 		options.ReducedMotion = true
 	}
 	return &Shell{
-		ctx: options.Context,
-		facade: facade,
+		ctx:      options.Context,
+		facade:   facade,
 		snapshot: cached,
-		screen: options.InitialScreen,
-		width: MinimumWidth,
-		height: MinimumHeight,
-		palette: makePalette(options.NoColor, options.HighContrast, options.Plain),
-		options: options,
+		screen:   options.InitialScreen,
+		width:    MinimumWidth,
+		height:   MinimumHeight,
+		palette:  makePalette(options.NoColor, options.HighContrast, options.Plain),
+		options:  options,
 	}
 }
 
@@ -97,9 +97,9 @@ func New(facade Facade, cached Snapshot, options Options) *Shell {
 // cannot perform network, filesystem, service, or subprocess work.
 func (m *Shell) Init() tea.Cmd { return nil }
 
-func (m *Shell) Screen() Screen { return m.screen }
-func (m *Shell) Snapshot() Snapshot { return m.snapshot }
-func (m *Shell) Busy() bool { return m.busy }
+func (m *Shell) Screen() Screen      { return m.screen }
+func (m *Shell) Snapshot() Snapshot  { return m.snapshot }
+func (m *Shell) Busy() bool          { return m.busy }
 func (m *Shell) SearchQuery() string { return m.query }
 
 // TakeHandoff returns the launch request recorded by the final TUI action.
@@ -110,7 +110,7 @@ func (m *Shell) TakeHandoff() (ActionRequest, bool) {
 		return ActionRequest{}, false
 	}
 	request := ActionRequest{
-		ID: m.handoff.ID,
+		ID:        m.handoff.ID,
 		Arguments: append([]string(nil), m.handoff.Arguments...),
 	}
 	m.handoff = nil
@@ -465,7 +465,6 @@ func valueOrText(value, fallback string) string {
 	return value
 }
 
-
 func (m *Shell) selectedArguments(id ActionID) []string {
 	switch m.screen {
 	case Providers:
@@ -523,7 +522,6 @@ func (m *Shell) selectedConfigSensitive() bool {
 	return rows[min(m.selected[Config], len(rows)-1)].Sensitive
 }
 
-
 func confirmationPhrase(id ActionID) string {
 	switch id {
 	case ActionProviderDisable:
@@ -550,35 +548,142 @@ func confirmationPhrase(id ActionID) string {
 func (m *Shell) actionForKey(key string) (ActionID, bool) {
 	switch m.screen {
 	case Dashboard:
-		if key == "r" { return ActionDashboardRefresh, true }
-		if key == "enter" && m.snapshot.Dashboard.Recommended != "" { return m.snapshot.Dashboard.Recommended, true }
+		if key == "r" {
+			return ActionDashboardRefresh, true
+		}
+		if key == "enter" && m.snapshot.Dashboard.Recommended != "" {
+			return m.snapshot.Dashboard.Recommended, true
+		}
 	case Providers:
-		switch key { case "r": return ActionProvidersList, true; case "enter": return ActionProviderDetails, true; case "a": return ActionProviderLogin, true; case "v": return ActionProviderVerify, true; case "e": return ActionProviderEnable, true; case "x": return ActionProviderDisable, true; case "delete": return ActionProviderRemove, true }
+		switch key {
+		case "r":
+			return ActionProvidersList, true
+		case "enter":
+			return ActionProviderDetails, true
+		case "a":
+			return ActionProviderLogin, true
+		case "v":
+			return ActionProviderVerify, true
+		case "e":
+			return ActionProviderEnable, true
+		case "x":
+			return ActionProviderDisable, true
+		case "delete":
+			return ActionProviderRemove, true
+		}
 	case Models:
-		switch key { case "r": return ActionModelsList, true; case "enter": return ActionModelDetails, true; case "t": return ActionModelTest, true; case "l": return ActionModelLaunch, true; case "f":
-			rows := m.filteredModels(); if len(rows) > 0 && rows[min(m.selected[m.screen], len(rows)-1)].Favorite { return ActionModelUnfavorite, true }; return ActionModelFavorite, true }
+		switch key {
+		case "r":
+			return ActionModelsList, true
+		case "enter":
+			return ActionModelDetails, true
+		case "t":
+			return ActionModelTest, true
+		case "l":
+			return ActionModelLaunch, true
+		case "f":
+			rows := m.filteredModels()
+			if len(rows) > 0 && rows[min(m.selected[m.screen], len(rows)-1)].Favorite {
+				return ActionModelUnfavorite, true
+			}
+			return ActionModelFavorite, true
+		}
 	case Launch:
-		switch key { case "enter": return ActionLaunchRun, true; case "p": return ActionLaunchPersist, true; case "d": return ActionLaunchDoctor, true }
+		switch key {
+		case "enter":
+			return ActionLaunchRun, true
+		case "p":
+			return ActionLaunchPersist, true
+		case "d":
+			return ActionLaunchDoctor, true
+		}
 	case Doctor:
-		switch key { case "r": return ActionDoctorRun, true; case "enter": return ActionDoctorDetails, true; case "f": return ActionDoctorFix, true; case "a": return ActionDoctorFixAll, true; case "b": return ActionDoctorBundle, true }
+		switch key {
+		case "r":
+			return ActionDoctorRun, true
+		case "enter":
+			return ActionDoctorDetails, true
+		case "f":
+			return ActionDoctorFix, true
+		case "a":
+			return ActionDoctorFixAll, true
+		case "b":
+			return ActionDoctorBundle, true
+		}
 	case Service:
-		switch key { case "v": return ActionServiceStatus, true; case "s": return ActionServiceStart, true; case "x": return ActionServiceStop, true; case "r": return ActionServiceRestart, true; case "i": return ActionServiceInstall, true; case "u": return ActionServiceUninstall, true; case "l": return ActionServiceLogs, true; case "f": return ActionServiceForeground, true }
+		switch key {
+		case "v":
+			return ActionServiceStatus, true
+		case "s":
+			return ActionServiceStart, true
+		case "x":
+			return ActionServiceStop, true
+		case "r":
+			return ActionServiceRestart, true
+		case "i":
+			return ActionServiceInstall, true
+		case "u":
+			return ActionServiceUninstall, true
+		case "l":
+			return ActionServiceLogs, true
+		case "f":
+			return ActionServiceForeground, true
+		}
 	case Config:
-		switch key { case "enter": return ActionConfigGet, true; case "w": return ActionConfigSet, true; case "e": return ActionConfigEdit, true; case "b": return ActionConfigBackup, true; case "r": return ActionConfigRestore, true; case "v": return ActionConfigShow, true }
+		switch key {
+		case "enter":
+			return ActionConfigGet, true
+		case "w":
+			return ActionConfigSet, true
+		case "e":
+			return ActionConfigEdit, true
+		case "b":
+			return ActionConfigBackup, true
+		case "r":
+			return ActionConfigRestore, true
+		case "v":
+			return ActionConfigShow, true
+		}
 	case Settings:
-		switch key { case "enter": return ActionSettingsGet, true; case "p": return ActionSettingsSet, true; case "b": return ActionSettingsBackup, true; case "r": return ActionSettingsRestore, true; case "v": return ActionSettingsShow, true }
+		switch key {
+		case "enter":
+			return ActionSettingsGet, true
+		case "p":
+			return ActionSettingsSet, true
+		case "b":
+			return ActionSettingsBackup, true
+		case "r":
+			return ActionSettingsRestore, true
+		case "v":
+			return ActionSettingsShow, true
+		}
 	case Logs:
-		switch key { case "r": return ActionLogsList, true; case " ": return ActionLogsFollow, true; case "e": return ActionLogsExport, true; case "delete": return ActionLogsClear, true }
+		switch key {
+		case "r":
+			return ActionLogsList, true
+		case " ":
+			return ActionLogsFollow, true
+		case "e":
+			return ActionLogsExport, true
+		case "delete":
+			return ActionLogsClear, true
+		}
 	}
 	return "", false
 }
 
 func (m *Shell) move(delta int) {
 	count := m.rowCount()
-	if count == 0 { return }
+	if count == 0 {
+		return
+	}
 	next := m.selected[m.screen] + delta
-	if next < 0 { next = count - 1 }
-	if next >= count { next = 0 }
+	if next < 0 {
+		next = count - 1
+	}
+	if next >= count {
+		next = 0
+	}
 	m.selected[m.screen] = next
 }
 
@@ -587,20 +692,31 @@ func (m *Shell) clampSelection() {
 		old := m.screen
 		m.screen = screen
 		count := m.rowCount()
-		if count == 0 { m.selected[screen] = 0 } else if m.selected[screen] >= count { m.selected[screen] = count - 1 }
+		if count == 0 {
+			m.selected[screen] = 0
+		} else if m.selected[screen] >= count {
+			m.selected[screen] = count - 1
+		}
 		m.screen = old
 	}
 }
 
 func (m *Shell) rowCount() int {
 	switch m.screen {
-	case Providers: return len(m.filteredProviders())
-	case Models: return len(m.filteredModels())
-	case Doctor: return len(m.filteredDoctor())
-	case Config: return len(m.filteredConfig())
-	case Settings: return len(m.filteredSettings())
-	case Logs: return len(m.filteredLogs())
-	default: return 1
+	case Providers:
+		return len(m.filteredProviders())
+	case Models:
+		return len(m.filteredModels())
+	case Doctor:
+		return len(m.filteredDoctor())
+	case Config:
+		return len(m.filteredConfig())
+	case Settings:
+		return len(m.filteredSettings())
+	case Logs:
+		return len(m.filteredLogs())
+	default:
+		return 1
 	}
 }
 
@@ -616,16 +732,28 @@ func (m *Shell) View() string {
 	var b strings.Builder
 	b.WriteString(m.header())
 	b.WriteByte('\n')
-	if m.search { b.WriteString("Search: " + safeText(m.query) + "\n") }
-	if m.input != nil { b.WriteString(m.inputView() + "\n") }
-	if m.busy { b.WriteString(Status{Kind: StatusWorking, Text: "Working"}.Label(m.options.ReducedMotion) + "\n") }
+	if m.search {
+		b.WriteString("Search: " + safeText(m.query) + "\n")
+	}
+	if m.input != nil {
+		b.WriteString(m.inputView() + "\n")
+	}
+	if m.busy {
+		b.WriteString(Status{Kind: StatusWorking, Text: "Working"}.Label(m.options.ReducedMotion) + "\n")
+	}
 	if m.busy && m.actionEvent.Type != "" {
 		b.WriteString(m.progressView() + "\n")
 	}
-	if m.lastErr != "" { b.WriteString(m.palette.error.Render("× Error: " + safeText(m.lastErr)) + "\n") }
+	if m.lastErr != "" {
+		b.WriteString(m.palette.error.Render("× Error: "+safeText(m.lastErr)) + "\n")
+	}
 	b.WriteString(m.screenView())
-	if m.help { b.WriteString("\n" + m.helpView()) }
-	if m.pending != nil { b.WriteString("\n" + m.confirmationView()) }
+	if m.help {
+		b.WriteString("\n" + m.helpView())
+	}
+	if m.pending != nil {
+		b.WriteString("\n" + m.confirmationView())
+	}
 	b.WriteString("\n" + m.footer())
 	return b.String()
 }
@@ -637,14 +765,22 @@ func (m *Shell) plainView() string {
 	b.WriteString(" - ")
 	b.WriteString(m.screen.String())
 	b.WriteByte('\n')
-	if m.lastErr != "" { b.WriteString("Error: " + safeText(m.lastErr) + "\n") }
-	if m.input != nil { b.WriteString(m.inputView() + "\n") }
+	if m.lastErr != "" {
+		b.WriteString("Error: " + safeText(m.lastErr) + "\n")
+	}
+	if m.input != nil {
+		b.WriteString(m.inputView() + "\n")
+	}
 	if m.busy && m.actionEvent.Type != "" {
 		b.WriteString(m.progressView() + "\n")
 	}
 	b.WriteString(m.screenView())
-	if m.help { b.WriteString("\n" + m.helpView()) }
-	if m.pending != nil { b.WriteString("\n" + m.confirmationView()) }
+	if m.help {
+		b.WriteString("\n" + m.helpView())
+	}
+	if m.pending != nil {
+		b.WriteString("\n" + m.confirmationView())
+	}
 	return b.String()
 }
 
@@ -669,28 +805,45 @@ func (m *Shell) header() string {
 	var tabs []string
 	for screen := Dashboard; screen <= Logs; screen++ {
 		label := strconv.Itoa(int(screen)+1) + " " + screen.String()
-		if screen == m.screen { label = "▸ " + label; label = m.palette.active.Render(label) }
+		if screen == m.screen {
+			label = "▸ " + label
+			label = m.palette.active.Render(label)
+		}
 		tabs = append(tabs, label)
 	}
 	version := safeText(m.snapshot.Version)
-	if version == "" { version = "dev" }
+	if version == "" {
+		version = "dev"
+	}
 	contextName := safeText(m.snapshot.Context)
-	if contextName == "" { contextName = "Local" }
-	return m.palette.title.Render("PMux " + version + " — " + m.screen.String() + " — " + contextName) + "\n" + strings.Join(tabs, "  ")
+	if contextName == "" {
+		contextName = "Local"
+	}
+	return m.palette.title.Render("PMux "+version+" — "+m.screen.String()+" — "+contextName) + "\n" + strings.Join(tabs, "  ")
 }
 
 func (m *Shell) screenView() string {
 	switch m.screen {
-	case Dashboard: return m.dashboardView()
-	case Providers: return m.providersView()
-	case Models: return m.modelsView()
-	case Launch: return m.launchView()
-	case Doctor: return m.doctorView()
-	case Service: return m.serviceView()
-	case Config: return m.configView()
-	case Settings: return m.settingsView()
-	case Logs: return m.logsView()
-	default: return "Unknown screen."
+	case Dashboard:
+		return m.dashboardView()
+	case Providers:
+		return m.providersView()
+	case Models:
+		return m.modelsView()
+	case Launch:
+		return m.launchView()
+	case Doctor:
+		return m.doctorView()
+	case Service:
+		return m.serviceView()
+	case Config:
+		return m.configView()
+	case Settings:
+		return m.settingsView()
+	case Logs:
+		return m.logsView()
+	default:
+		return "Unknown screen."
 	}
 }
 
@@ -707,15 +860,29 @@ func (m *Shell) dashboardView() string {
 	line(&b, "Providers", strconv.Itoa(d.Providers))
 	line(&b, "Accounts", strconv.Itoa(d.Accounts))
 	line(&b, "Available models", strconv.Itoa(d.Models))
-	if len(d.RecentErrors) == 0 { line(&b, "Recent errors", "No recent errors.") } else { line(&b, "Recent errors", strings.Join(d.RecentErrors, "; ")) }
-	if len(d.Warnings) == 0 { line(&b, "Security warnings", "No security warnings detected.") } else { line(&b, "Security warnings", strings.Join(d.Warnings, "; ")) }
-	if d.Recommended == "" { line(&b, "> Recommended action", "No action required") } else if meta, ok := Action(d.Recommended); ok { line(&b, "> Recommended action", meta.Label) }
+	if len(d.RecentErrors) == 0 {
+		line(&b, "Recent errors", "No recent errors.")
+	} else {
+		line(&b, "Recent errors", strings.Join(d.RecentErrors, "; "))
+	}
+	if len(d.Warnings) == 0 {
+		line(&b, "Security warnings", "No security warnings detected.")
+	} else {
+		line(&b, "Security warnings", strings.Join(d.Warnings, "; "))
+	}
+	if d.Recommended == "" {
+		line(&b, "> Recommended action", "No action required")
+	} else if meta, ok := Action(d.Recommended); ok {
+		line(&b, "> Recommended action", meta.Label)
+	}
 	return b.String()
 }
 
 func (m *Shell) providersView() string {
 	rows := m.filteredProviders()
-	if len(rows) == 0 { return "No providers are configured. Press a to add or authenticate a provider.\n" }
+	if len(rows) == 0 {
+		return "No providers are configured. Press a to add or authenticate a provider.\n"
+	}
 	var b strings.Builder
 	b.WriteString("  Provider              Type              Enabled  Status                 Accounts  Models\n")
 	for i, row := range rows {
@@ -727,13 +894,27 @@ func (m *Shell) providersView() string {
 
 func (m *Shell) modelsView() string {
 	rows := m.filteredModels()
-	if len(rows) == 0 { return "No models are available. Authenticate a provider, then press r to refresh.\n" }
+	if len(rows) == 0 {
+		return "No models are available. Authenticate a provider, then press r to refresh.\n"
+	}
 	var b strings.Builder
 	b.WriteString("  Fav Model ID                        Owner          Provider        Status       Test\n")
 	for i, row := range rows {
-		favorite := "☆"; if row.Favorite { favorite = "★" }
-		status := "Available"; if !row.Available { status = "Unavailable" }; if row.Stale { status = "Cached stale" }
-		latency := "—"; if row.Latency > 0 { latency = row.Latency.Round(time.Millisecond).String() }
+		favorite := "☆"
+		if row.Favorite {
+			favorite = "★"
+		}
+		status := "Available"
+		if !row.Available {
+			status = "Unavailable"
+		}
+		if row.Stale {
+			status = "Cached stale"
+		}
+		latency := "—"
+		if row.Latency > 0 {
+			latency = row.Latency.Round(time.Millisecond).String()
+		}
 		fmt.Fprintf(&b, "%s %s   %-31s %-14s %-15s %-12s %s\n", rowFocus(i == m.selected[m.screen]), favorite, crop(row.ID, 31), crop(row.Owner, 14), crop(defaultText(row.Provider, "Unknown"), 15), status, latency)
 	}
 	return b.String()
@@ -750,13 +931,19 @@ func (m *Shell) launchView() string {
 	line(&b, "Working directory", v.WorkingDir)
 	line(&b, "Arguments", strings.Join(v.Arguments, " "))
 	line(&b, "Persistence", "Process only")
-	if v.Ready { line(&b, "> Launch", Status{Kind: StatusHealthy, Text: "Ready"}.Label(m.options.ReducedMotion)) } else { line(&b, "> Launch", Status{Kind: StatusError, Text: defaultText(v.Reason, "Not ready")}.Label(m.options.ReducedMotion)) }
+	if v.Ready {
+		line(&b, "> Launch", Status{Kind: StatusHealthy, Text: "Ready"}.Label(m.options.ReducedMotion))
+	} else {
+		line(&b, "> Launch", Status{Kind: StatusError, Text: defaultText(v.Reason, "Not ready")}.Label(m.options.ReducedMotion))
+	}
 	return b.String()
 }
 
 func (m *Shell) doctorView() string {
 	rows := m.filteredDoctor()
-	if len(rows) == 0 { return "Doctor found no problems.\n" }
+	if len(rows) == 0 {
+		return "Doctor found no problems.\n"
+	}
 	var b strings.Builder
 	b.WriteString("  Status                 Check                    Severity    Summary\n")
 	for i, row := range rows {
@@ -771,22 +958,31 @@ func (m *Shell) serviceView() string {
 	line(&b, "Backend", v.Backend)
 	line(&b, "Identity", v.Identity)
 	line(&b, "> State", v.Status.Label(m.options.ReducedMotion))
-	if v.PID > 0 { line(&b, "PID", strconv.Itoa(v.PID)) }
+	if v.PID > 0 {
+		line(&b, "PID", strconv.Itoa(v.PID))
+	}
 	line(&b, "Executable", v.BinaryPath)
 	line(&b, "Absolute config", v.ConfigPath)
 	line(&b, "Runtime directory", v.RuntimeDir)
 	line(&b, "Core version", defaultText(v.CoreVersion, "unknown"))
-	if v.Warning != "" { line(&b, "Warning", v.Warning) }
+	if v.Warning != "" {
+		line(&b, "Warning", v.Warning)
+	}
 	return b.String()
 }
 
 func (m *Shell) configView() string {
 	rows := m.filteredConfig()
-	if len(rows) == 0 { return "Configuration is empty. Press d to run Doctor.\n" }
+	if len(rows) == 0 {
+		return "Configuration is empty. Press d to run Doctor.\n"
+	}
 	var b strings.Builder
 	b.WriteString("  Key                                  Value                         Activation\n")
 	for i, row := range rows {
-		value := row.Value; if row.Sensitive { value = "********" }
+		value := row.Value
+		if row.Sensitive {
+			value = "********"
+		}
 		fmt.Fprintf(&b, "%s %-36s %-29s %s\n", rowFocus(i == m.selected[m.screen]), crop(row.Key, 36), crop(value, 29), safeText(row.Activation))
 	}
 	return b.String()
@@ -794,21 +990,30 @@ func (m *Shell) configView() string {
 
 func (m *Shell) settingsView() string {
 	rows := m.filteredSettings()
-	if len(rows) == 0 { return "PMux settings do not exist yet; defaults are active.\n" }
+	if len(rows) == 0 {
+		return "PMux settings do not exist yet; defaults are active.\n"
+	}
 	var b strings.Builder
 	b.WriteString("  Setting                                      Value\n")
-	for i, row := range rows { fmt.Fprintf(&b, "%s %-44s %s\n", rowFocus(i == m.selected[m.screen]), crop(row.Key, 44), safeText(row.Value)) }
+	for i, row := range rows {
+		fmt.Fprintf(&b, "%s %-44s %s\n", rowFocus(i == m.selected[m.screen]), crop(row.Key, 44), safeText(row.Value))
+	}
 	line(&b, "Telemetry", "None")
 	return b.String()
 }
 
 func (m *Shell) logsView() string {
 	rows := m.filteredLogs()
-	if len(rows) == 0 { return "No log entries are available for the selected sources and time range.\n" }
+	if len(rows) == 0 {
+		return "No log entries are available for the selected sources and time range.\n"
+	}
 	var b strings.Builder
 	b.WriteString("  Timestamp             Source        Level   Message\n")
 	for i, row := range rows {
-		ts := row.Timestamp.Format(time.RFC3339); if row.Timestamp.IsZero() { ts = "—" }
+		ts := row.Timestamp.Format(time.RFC3339)
+		if row.Timestamp.IsZero() {
+			ts = "—"
+		}
 		fmt.Fprintf(&b, "%s %-20s %-13s %-7s %s\n", rowFocus(i == m.selected[m.screen]), ts, crop(row.Source, 13), crop(row.Level, 7), crop(row.Message, 55))
 	}
 	return b.String()
@@ -820,7 +1025,10 @@ func (m *Shell) footer() string {
 	seen := make(map[string]bool)
 	for _, action := range actions {
 		item := action.Key + " " + action.Label
-		if !seen[item] { parts = append(parts, item); seen[item] = true }
+		if !seen[item] {
+			parts = append(parts, item)
+			seen[item] = true
+		}
 	}
 	return strings.Join(parts, "  ")
 }
@@ -846,22 +1054,109 @@ func line(b *strings.Builder, label, value string) {
 	fmt.Fprintf(b, "%-24s %s\n", safeText(label), safeText(value))
 }
 
-func rowFocus(focused bool) string { if focused { return ">" }; return " " }
-func yesNo(value bool) string { if value { return "Yes" }; return "No" }
-func defaultText(value, fallback string) string { if strings.TrimSpace(value) == "" { return fallback }; return value }
-func joinNonempty(values ...string) string { var out []string; for _, value := range values { if strings.TrimSpace(value) != "" { out = append(out, value) } }; return strings.Join(out, " ") }
-func crop(value string, width int) string { value = safeText(value); r := []rune(value); if len(r) <= width { return value }; if width <= 1 { return "…" }; return string(r[:width-1]) + "…" }
+func rowFocus(focused bool) string {
+	if focused {
+		return ">"
+	}
+	return " "
+}
+func yesNo(value bool) string {
+	if value {
+		return "Yes"
+	}
+	return "No"
+}
+func defaultText(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+func joinNonempty(values ...string) string {
+	var out []string
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			out = append(out, value)
+		}
+	}
+	return strings.Join(out, " ")
+}
+func crop(value string, width int) string {
+	value = safeText(value)
+	r := []rune(value)
+	if len(r) <= width {
+		return value
+	}
+	if width <= 1 {
+		return "…"
+	}
+	return string(r[:width-1]) + "…"
+}
 
 func (m *Shell) matches(values ...string) bool {
 	needle := strings.ToLower(m.query)
-	if needle == "" { return true }
-	for _, value := range values { if strings.Contains(strings.ToLower(safeText(value)), needle) { return true } }
+	if needle == "" {
+		return true
+	}
+	for _, value := range values {
+		if strings.Contains(strings.ToLower(safeText(value)), needle) {
+			return true
+		}
+	}
 	return false
 }
 
-func (m *Shell) filteredProviders() []ProviderRow { out := make([]ProviderRow, 0, len(m.snapshot.Providers)); for _, row := range m.snapshot.Providers { if m.matches(row.Name, row.ID, row.Kind, row.Status.Text) { out = append(out, row) } }; return out }
-func (m *Shell) filteredModels() []ModelRow { out := make([]ModelRow, 0, len(m.snapshot.Models)); for _, row := range m.snapshot.Models { if m.matches(row.ID, row.Owner, row.Provider) { out = append(out, row) } }; return out }
-func (m *Shell) filteredDoctor() []DoctorRow { out := make([]DoctorRow, 0, len(m.snapshot.Doctor)); for _, row := range m.snapshot.Doctor { if m.matches(row.ID, row.Summary, row.Severity) { out = append(out, row) } }; return out }
-func (m *Shell) filteredConfig() []ConfigRow { out := make([]ConfigRow, 0, len(m.snapshot.Config)); for _, row := range m.snapshot.Config { if m.matches(row.Key, row.Activation) { out = append(out, row) } }; return out }
-func (m *Shell) filteredSettings() []SettingRow { out := make([]SettingRow, 0, len(m.snapshot.Settings)); for _, row := range m.snapshot.Settings { if m.matches(row.Key, row.Value) { out = append(out, row) } }; return out }
-func (m *Shell) filteredLogs() []LogRow { out := make([]LogRow, 0, len(m.snapshot.Logs)); for _, row := range m.snapshot.Logs { if m.matches(row.Source, row.Level, row.Message, row.RequestID) { out = append(out, row) } }; return out }
+func (m *Shell) filteredProviders() []ProviderRow {
+	out := make([]ProviderRow, 0, len(m.snapshot.Providers))
+	for _, row := range m.snapshot.Providers {
+		if m.matches(row.Name, row.ID, row.Kind, row.Status.Text) {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+func (m *Shell) filteredModels() []ModelRow {
+	out := make([]ModelRow, 0, len(m.snapshot.Models))
+	for _, row := range m.snapshot.Models {
+		if m.matches(row.ID, row.Owner, row.Provider) {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+func (m *Shell) filteredDoctor() []DoctorRow {
+	out := make([]DoctorRow, 0, len(m.snapshot.Doctor))
+	for _, row := range m.snapshot.Doctor {
+		if m.matches(row.ID, row.Summary, row.Severity) {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+func (m *Shell) filteredConfig() []ConfigRow {
+	out := make([]ConfigRow, 0, len(m.snapshot.Config))
+	for _, row := range m.snapshot.Config {
+		if m.matches(row.Key, row.Activation) {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+func (m *Shell) filteredSettings() []SettingRow {
+	out := make([]SettingRow, 0, len(m.snapshot.Settings))
+	for _, row := range m.snapshot.Settings {
+		if m.matches(row.Key, row.Value) {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+func (m *Shell) filteredLogs() []LogRow {
+	out := make([]LogRow, 0, len(m.snapshot.Logs))
+	for _, row := range m.snapshot.Logs {
+		if m.matches(row.Source, row.Level, row.Message, row.RequestID) {
+			out = append(out, row)
+		}
+	}
+	return out
+}

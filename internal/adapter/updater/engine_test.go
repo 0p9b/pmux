@@ -183,7 +183,9 @@ func TestChecksumFailurePrecedesExtraction(t *testing.T) {
 		checksums func(*fakeSource) []byte
 	}{
 		{name: "missing", checksums: func(*fakeSource) []byte { return []byte("00  another-file.tar.gz\n") }},
-		{name: "mismatch", checksums: func(f *fakeSource) []byte { return []byte(strings.Repeat("0", 64) + "  " + f.release.ArchiveName + "\n") }},
+		{name: "mismatch", checksums: func(f *fakeSource) []byte {
+			return []byte(strings.Repeat("0", 64) + "  " + f.release.ArchiveName + "\n")
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -448,8 +450,8 @@ func validSource(t *testing.T, component update.Component, version, executable s
 	archive := testExecutableArchive(t, executable)
 	hash := sha256.Sum256(archive)
 	return &fakeSource{
-		release: Release{Component: component, Version: version, ArchiveName: archiveName, ArchiveURL: "memory://archive", ChecksumsURL: "memory://checksums", ExecutableName: executable},
-		archive: archive,
+		release:   Release{Component: component, Version: version, ArchiveName: archiveName, ArchiveURL: "memory://archive", ChecksumsURL: "memory://checksums", ExecutableName: executable},
+		archive:   archive,
 		checksums: []byte(hex.EncodeToString(hash[:]) + "  " + archiveName + "\n"),
 	}
 }
@@ -505,7 +507,6 @@ func archiveBytes(t *testing.T, name string, body []byte) []byte {
 	}
 	return output.Bytes()
 }
-
 
 func proxyLayout(t *testing.T) (versionsDir, pointer, oldTarget string) {
 	t.Helper()

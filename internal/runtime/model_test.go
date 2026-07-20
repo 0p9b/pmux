@@ -2,8 +2,8 @@ package runtime
 
 import (
 	"context"
-	"errors"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,8 +41,8 @@ func TestNativeModelTesterRequiresLiveExactModelAndUsesLocalProxy(t *testing.T) 
 		case "/v1/chat/completions":
 			completionCalls++
 			var body struct {
-				Model string `json:"model"`
-				MaxTokens int `json:"max_tokens"`
+				Model     string `json:"model"`
+				MaxTokens int    `json:"max_tokens"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Errorf("decode request: %v", err)
@@ -136,4 +136,3 @@ func TestNativeModelTesterRequiresLiveExactModelAndUsesLocalProxy(t *testing.T) 
 		t.Fatal("model tester accepted an ID absent from the live catalog")
 	}
 }
-

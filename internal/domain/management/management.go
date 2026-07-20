@@ -10,47 +10,124 @@ type ProviderID string
 type ProviderKeyKind string
 type SettingName string
 
-type CoreInfo struct { Version string `json:"version"`; Healthy bool `json:"healthy"`; Warning string `json:"warning,omitempty"` }
-type ModelRef struct { ID string `json:"id"`; Owner string `json:"owner,omitempty"`; Channel string `json:"channel,omitempty"`; Available bool `json:"available"` }
+type CoreInfo struct {
+	Version string `json:"version"`
+	Healthy bool   `json:"healthy"`
+	Warning string `json:"warning,omitempty"`
+}
+type ModelRef struct {
+	ID        string `json:"id"`
+	Owner     string `json:"owner,omitempty"`
+	Channel   string `json:"channel,omitempty"`
+	Available bool   `json:"available"`
+}
 type CapabilitySet map[string]bool
 type ConfigView map[string]any
 type SettingValue json.RawMessage
 type SettingPatch json.RawMessage
-type SecretRef struct { Mask string `json:"mask"`; Fingerprint string `json:"fingerprint"` }
+type SecretRef struct {
+	Mask        string `json:"mask"`
+	Fingerprint string `json:"fingerprint"`
+}
 type SecretValue string
 type KeyPatch json.RawMessage
-type APIKeyUsage struct { Fingerprint string `json:"fingerprint"`; Requests int64 `json:"requests"` }
-type ProviderKey struct { ID string `json:"id"`; Label string `json:"label,omitempty"`; Mask string `json:"mask,omitempty"`; Fields map[string]string `json:"fields,omitempty"` }
+type APIKeyUsage struct {
+	Fingerprint string `json:"fingerprint"`
+	Requests    int64  `json:"requests"`
+}
+type ProviderKey struct {
+	ID     string            `json:"id"`
+	Label  string            `json:"label,omitempty"`
+	Mask   string            `json:"mask,omitempty"`
+	Fields map[string]string `json:"fields,omitempty"`
+}
 type ProviderKeyPatch json.RawMessage
-type AuthFile struct { Name string `json:"name"`; Provider ProviderID `json:"provider"`; Disabled bool `json:"disabled"`; Status string `json:"status,omitempty"` }
-type ModelDef struct { ID string `json:"id"`; Owner string `json:"owner,omitempty"` }
+type AuthFile struct {
+	Name     string     `json:"name"`
+	Provider ProviderID `json:"provider"`
+	Disabled bool       `json:"disabled"`
+	Status   string     `json:"status,omitempty"`
+}
+type ModelDef struct {
+	ID    string `json:"id"`
+	Owner string `json:"owner,omitempty"`
+}
 type AuthFileStatusPatch json.RawMessage
 type AuthFileFieldsPatch json.RawMessage
 type ExcludedModelSet map[string][]string
 type ExcludedModelPatch json.RawMessage
 type ModelAliasSet map[string]map[string]string
 type ModelAliasPatch json.RawMessage
-type OAuthChallenge struct { State string `json:"state"`; URL string `json:"url,omitempty"`; VerificationURI string `json:"verification_uri,omitempty"`; UserCode string `json:"user_code,omitempty"`; ExpiresAt time.Time `json:"expires_at,omitempty"`; Interval time.Duration `json:"interval,omitempty"` }
-type OAuthStatus struct { State string `json:"state"`; Status string `json:"status"`; Message string `json:"message,omitempty"` }
-type LogQuery struct { Level string; Since time.Time; Tail int }
-type LogRecord struct { Timestamp time.Time `json:"timestamp"`; Level string `json:"level"`; Message string `json:"message"` }
-type LogPage struct { Records []LogRecord `json:"records"`; Next string `json:"next,omitempty"` }
-type RequestErrorLog struct { Name string `json:"name"`; Status int `json:"status,omitempty"`; Message string `json:"message,omitempty"` }
-type RequestLog struct { ID string `json:"id"`; Status int `json:"status"`; Method string `json:"method"`; Path string `json:"path"` }
-type UsageRecord struct { Timestamp time.Time `json:"timestamp"`; Model string `json:"model"`; Status int `json:"status"` }
-type VertexImportRequest struct { Path string; Prefix string }
-type VertexImportResult struct { Name string `json:"name"` }
-type ResetQuotaRequest struct { Name string }
-type APICallRequest struct { Method string; URL string; Headers map[string]string; Body []byte }
-type APICallResponse struct { Status int; Headers map[string][]string; Body []byte }
+type OAuthChallenge struct {
+	State           string        `json:"state"`
+	URL             string        `json:"url,omitempty"`
+	VerificationURI string        `json:"verification_uri,omitempty"`
+	UserCode        string        `json:"user_code,omitempty"`
+	ExpiresAt       time.Time     `json:"expires_at,omitempty"`
+	Interval        time.Duration `json:"interval,omitempty"`
+}
+type OAuthStatus struct {
+	State   string `json:"state"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+type LogQuery struct {
+	Level string
+	Since time.Time
+	Tail  int
+}
+type LogRecord struct {
+	Timestamp time.Time `json:"timestamp"`
+	Level     string    `json:"level"`
+	Message   string    `json:"message"`
+}
+type LogPage struct {
+	Records []LogRecord `json:"records"`
+	Next    string      `json:"next,omitempty"`
+}
+type RequestErrorLog struct {
+	Name    string `json:"name"`
+	Status  int    `json:"status,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+type RequestLog struct {
+	ID     string `json:"id"`
+	Status int    `json:"status"`
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
+type UsageRecord struct {
+	Timestamp time.Time `json:"timestamp"`
+	Model     string    `json:"model"`
+	Status    int       `json:"status"`
+}
+type VertexImportRequest struct {
+	Path   string
+	Prefix string
+}
+type VertexImportResult struct {
+	Name string `json:"name"`
+}
+type ResetQuotaRequest struct{ Name string }
+type APICallRequest struct {
+	Method  string
+	URL     string
+	Headers map[string]string
+	Body    []byte
+}
+type APICallResponse struct {
+	Status  int
+	Headers map[string][]string
+	Body    []byte
+}
 
 const (
-	ProviderGemini ProviderKeyKind = "gemini-api-key"
-	ProviderInteractions ProviderKeyKind = "interactions-api-key"
-	ProviderClaude ProviderKeyKind = "claude-api-key"
-	ProviderCodex ProviderKeyKind = "codex-api-key"
-	ProviderXAI ProviderKeyKind = "xai-api-key"
-	ProviderVertex ProviderKeyKind = "vertex-api-key"
+	ProviderGemini           ProviderKeyKind = "gemini-api-key"
+	ProviderInteractions     ProviderKeyKind = "interactions-api-key"
+	ProviderClaude           ProviderKeyKind = "claude-api-key"
+	ProviderCodex            ProviderKeyKind = "codex-api-key"
+	ProviderXAI              ProviderKeyKind = "xai-api-key"
+	ProviderVertex           ProviderKeyKind = "vertex-api-key"
 	ProviderOpenAICompatible ProviderKeyKind = "openai-compatibility"
 )
 

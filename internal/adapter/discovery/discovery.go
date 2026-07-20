@@ -63,12 +63,12 @@ func (d VersionDetector) Detect(ctx context.Context, candidate Candidate) Versio
 
 // Discoverer performs observation only. It has no lifecycle or mutation port.
 type Discoverer struct {
-	Processes ProcessEnumerator
-	Services  ServiceEnumerator
+	Processes  ProcessEnumerator
+	Services   ServiceEnumerator
 	Containers ContainerEnumerator
-	Listeners ListenerProber
-	Versions  VersionDetector
-	LookPath  func(string) (string, error)
+	Listeners  ListenerProber
+	Versions   VersionDetector
+	LookPath   func(string) (string, error)
 }
 
 func (d Discoverer) Discover(ctx context.Context, request Request) ([]Candidate, error) {
@@ -413,13 +413,27 @@ func candidateKey(candidate Candidate) string {
 }
 
 func combine(left, right Candidate) Candidate {
-	if left.Binary == nil { left.Binary = right.Binary }
-	if left.Config == nil { left.Config = right.Config }
-	if left.AuthDir == "" { left.AuthDir = right.AuthDir }
-	if left.Process == nil { left.Process = right.Process }
-	if left.Service == nil { left.Service = right.Service }
-	if left.Port == nil { left.Port = right.Port }
-	if left.Container == nil { left.Container = right.Container }
+	if left.Binary == nil {
+		left.Binary = right.Binary
+	}
+	if left.Config == nil {
+		left.Config = right.Config
+	}
+	if left.AuthDir == "" {
+		left.AuthDir = right.AuthDir
+	}
+	if left.Process == nil {
+		left.Process = right.Process
+	}
+	if left.Service == nil {
+		left.Service = right.Service
+	}
+	if left.Port == nil {
+		left.Port = right.Port
+	}
+	if left.Container == nil {
+		left.Container = right.Container
+	}
 	left.Findings = append(left.Findings, right.Findings...)
 	return left
 }

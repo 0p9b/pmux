@@ -141,7 +141,7 @@ func TestRefreshManagementAttributionWinsAndDeduplicates(t *testing.T) {
 func TestRefreshReflectsNewUpstreamModelsWithoutCodeCatalog(t *testing.T) {
 	client := &fakeManagement{
 		authFiles: []management.AuthFile{{Name: "account.json", Provider: "runtime-provider"}},
-		models: map[string][]management.ModelRef{"account.json": nil},
+		models:    map[string][]management.ModelRef{"account.json": nil},
 	}
 	catalog := New(client, &memoryCache{}, nil, Options{})
 

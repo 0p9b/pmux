@@ -53,13 +53,13 @@ func testSpec(t *testing.T) service.ServiceSpec {
 		t.Fatal(err)
 	}
 	return service.ServiceSpec{
-		InstanceID: "default",
-		Identity: service.Identity(service.BackendSystemdUser, "default"),
-		PMuxPath: filepath.Join(root, "pmux-service-host"),
-		BinaryPath: filepath.Join(root, "cli-proxy-api"),
-		ConfigPath: filepath.Join(root, "config.yaml"),
-		RuntimeDir: runtimeDir,
-		LogDir: filepath.Join(root, "logs"),
+		InstanceID:  "default",
+		Identity:    service.Identity(service.BackendSystemdUser, "default"),
+		PMuxPath:    filepath.Join(root, "pmux-service-host"),
+		BinaryPath:  filepath.Join(root, "cli-proxy-api"),
+		ConfigPath:  filepath.Join(root, "config.yaml"),
+		RuntimeDir:  runtimeDir,
+		LogDir:      filepath.Join(root, "logs"),
 		Environment: []string{"PATH=/usr/bin", "HOME=/home/u", "PGSTORE_HOST=bad", "ANTHROPIC_AUTH_TOKEN=secret"},
 	}
 }
@@ -168,7 +168,7 @@ func TestSystemdLogsAreRedacted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer logs.Close()
+	defer func() { _ = logs.Close() }()
 	body, err := io.ReadAll(logs)
 	if err != nil {
 		t.Fatal(err)

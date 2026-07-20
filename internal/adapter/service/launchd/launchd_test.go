@@ -316,7 +316,7 @@ func TestLogsUsesSeparateTailArgumentsAndOwnedPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	if len(runner.stream) != 1 {
 		t.Fatalf("stream calls = %d", len(runner.stream))
 	}
@@ -352,7 +352,7 @@ func TestLogsRedactSecretsAndTerminalControls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	body, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
@@ -391,7 +391,7 @@ func TestLogsFollowStreamsUntilContextCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer logs.Close()
+	defer func() { _ = logs.Close() }()
 	buffered := bufio.NewReader(logs)
 
 	writeLine := func(line string) <-chan error {
@@ -453,7 +453,7 @@ func TestLogsBoundIndividualLineBuffering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer logs.Close()
+	defer func() { _ = logs.Close() }()
 	if _, err := io.ReadAll(logs); err == nil {
 		t.Fatalf("LaunchAgent log reader accepted a line larger than %d bytes", maxLogLineBytes)
 	}

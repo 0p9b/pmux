@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/x/term"
 	"github.com/0p9b/pmux/internal/pmuxerr"
+	"github.com/charmbracelet/x/term"
 )
 
 // readPassword reads one protected value directly from the controlling input

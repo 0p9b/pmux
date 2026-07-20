@@ -24,22 +24,34 @@ func TestVerboseCauseNeverRendersArbitraryErrorText(t *testing.T) {
 
 	for _, jsonMode := range []bool{false, true} {
 		name := "human"
-		if jsonMode { name = "json" }
+		if jsonMode {
+			name = "json"
+		}
 		t.Run(name, func(t *testing.T) {
 			var output bytes.Buffer
-			if err := renderError(&output, typed, jsonMode, true); err != nil { t.Fatal(err) }
-			for _, canary := range canaries {
-				if strings.Contains(output.String(), canary) { t.Fatalf("verbose output disclosed canary %q: %s", canary, output.String()) }
+			if err := renderError(&output, typed, jsonMode, true); err != nil {
+				t.Fatal(err)
 			}
-			if !strings.Contains(output.String(), "*errors.errorString") { t.Fatalf("safe cause classification missing: %s", output.String()) }
-			if !strings.Contains(output.String(), pmuxerr.ManagementUnreachable) { t.Fatalf("structural error code missing: %s", output.String()) }
+			for _, canary := range canaries {
+				if strings.Contains(output.String(), canary) {
+					t.Fatalf("verbose output disclosed canary %q: %s", canary, output.String())
+				}
+			}
+			if !strings.Contains(output.String(), "*errors.errorString") {
+				t.Fatalf("safe cause classification missing: %s", output.String())
+			}
+			if !strings.Contains(output.String(), pmuxerr.ManagementUnreachable) {
+				t.Fatalf("structural error code missing: %s", output.String())
+			}
 		})
 	}
 }
 
 func TestSafeCauseDoesNotInvokeErrorMethod(t *testing.T) {
 	cause := &panicOnError{}
-	if got := safeCause(cause); got != "*main.panicOnError" { t.Fatalf("classification = %q", got) }
+	if got := safeCause(cause); got != "*main.panicOnError" {
+		t.Fatalf("classification = %q", got)
+	}
 }
 
 type panicOnError struct{}

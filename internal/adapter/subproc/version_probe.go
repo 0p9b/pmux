@@ -32,10 +32,10 @@ type VersionInfo struct {
 // VersionProbe starts only a generated isolated installation. It never accepts
 // or reads the adopted user's config or auth directory.
 type VersionProbe struct {
-	Executor LineExecutor
-	TempRoot string
-	Timeout  time.Duration
-	ParentEnv []string
+	Executor   LineExecutor
+	TempRoot   string
+	Timeout    time.Duration
+	ParentEnv  []string
 	EnvOptions EnvironmentOptions
 }
 

@@ -9,13 +9,13 @@ import (
 )
 
 type fakeSelfHelperOps struct {
-	files      map[string][]byte
-	waitErr    error
+	files       map[string][]byte
+	waitErr     error
 	failVersion string
-	moves      [][2]string
-	onMove     func()
-	status     selfUpdateStatus
-	cleaned    bool
+	moves       [][2]string
+	onMove      func()
+	status      selfUpdateStatus
+	cleaned     bool
 }
 
 func (f *fakeSelfHelperOps) WaitParent(context.Context, int) error { return f.waitErr }
@@ -49,7 +49,10 @@ func (f *fakeSelfHelperOps) VerifyVersion(_ context.Context, path, version strin
 	}
 	return nil
 }
-func (f *fakeSelfHelperOps) WriteStatus(_ string, status selfUpdateStatus) error { f.status = status; return nil }
+func (f *fakeSelfHelperOps) WriteStatus(_ string, status selfUpdateStatus) error {
+	f.status = status
+	return nil
+}
 func (f *fakeSelfHelperOps) Cleanup(selfUpdatePlan) { f.cleaned = true }
 
 func TestSelfUpdateHelperSuccess(t *testing.T) {
@@ -146,22 +149,22 @@ func helperFixture() (selfUpdatePlan, *fakeSelfHelperOps) {
 	oldHash := sha256.Sum256(oldBody)
 	newHash := sha256.Sum256(newBody)
 	plan := selfUpdatePlan{
-		ParentPID: 42,
-		ActivePath: active,
-		ReplacementPath: replacement,
-		HelperPath: helper,
-		PreviousPath: active + ".pmux-previous",
-		StatusPath: active + ".pmux-update-status.json",
-		ActiveSHA256: hex.EncodeToString(oldHash[:]),
+		ParentPID:         42,
+		ActivePath:        active,
+		ReplacementPath:   replacement,
+		HelperPath:        helper,
+		PreviousPath:      active + ".pmux-previous",
+		StatusPath:        active + ".pmux-update-status.json",
+		ActiveSHA256:      hex.EncodeToString(oldHash[:]),
 		ReplacementSHA256: hex.EncodeToString(newHash[:]),
-		HelperSHA256: hex.EncodeToString(newHash[:]),
-		CurrentVersion: "1.0.0",
-		NextVersion: "2.0.0",
+		HelperSHA256:      hex.EncodeToString(newHash[:]),
+		CurrentVersion:    "1.0.0",
+		NextVersion:       "2.0.0",
 	}
 	ops := &fakeSelfHelperOps{files: map[string][]byte{
-		active: append([]byte(nil), oldBody...),
+		active:      append([]byte(nil), oldBody...),
 		replacement: append([]byte(nil), newBody...),
-		helper: append([]byte(nil), newBody...),
+		helper:      append([]byte(nil), newBody...),
 	}}
 	return plan, ops
 }

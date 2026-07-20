@@ -32,17 +32,23 @@ func TestSafeModeFixPreviewsAppliesAndRollsBack(t *testing.T) {
 	}
 	attempts, waits := 0, 0
 	fix := &safeModeFix{
-		adapter: configfile.New(filepath.Join(root, "backups")),
+		adapter:      configfile.New(filepath.Join(root, "backups")),
 		installation: state.Installation{ConfigPath: configPath, ProxyKeyRef: state.SecretReference{Path: keyPath}},
-		platform: platform,
+		platform:     platform,
 		verify: func(_ context.Context, key string) error {
-			if key == "" { t.Fatal("empty key was verified") }
+			if key == "" {
+				t.Fatal("empty key was verified")
+			}
 			attempts++
-			if attempts < 3 { return errors.New("hot reload pending") }
+			if attempts < 3 {
+				return errors.New("hot reload pending")
+			}
 			return nil
 		},
 		wait: func(ctx context.Context, duration time.Duration) error {
-			if duration < time.Second { t.Fatalf("poll duration = %s", duration) }
+			if duration < time.Second {
+				t.Fatalf("poll duration = %s", duration)
+			}
 			waits++
 			return ctx.Err()
 		},
@@ -64,7 +70,9 @@ func TestSafeModeFixPreviewsAppliesAndRollsBack(t *testing.T) {
 	if !applied.Changed || !applied.Verified {
 		t.Fatalf("applied = %#v", applied)
 	}
-	if attempts != 3 || waits != 2 { t.Fatalf("verification attempts=%d waits=%d", attempts, waits) }
+	if attempts != 3 || waits != 2 {
+		t.Fatalf("verification attempts=%d waits=%d", attempts, waits)
+	}
 	body, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +117,7 @@ func TestSafeModeFixPatchesAdoptedConfigAndRefreshesKeyReference(t *testing.T) {
 	installation := state.Installation{
 		ID: "default", Kind: "adopted", BinaryPath: filepath.Join(root, "cli-proxy-api"), ConfigPath: configPath,
 		ProxyKeyRef: state.SecretReference{Path: configPath, Masked: "********", Fingerprint: fingerprintOf("example-api-key")},
-		AuthDir: filepath.Join(root, "auth"), RuntimeDir: filepath.Join(root, "runtime"), Host: "127.0.0.1", Port: 8317, ServiceBackend: "foreground",
+		AuthDir:     filepath.Join(root, "auth"), RuntimeDir: filepath.Join(root, "runtime"), Host: "127.0.0.1", Port: 8317, ServiceBackend: "foreground",
 	}
 	current, err := store.LoadState()
 	if err != nil {

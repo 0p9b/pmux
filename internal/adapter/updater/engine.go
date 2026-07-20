@@ -399,66 +399,136 @@ func (e *Engine) UpdateProxy(ctx context.Context, req ProxyRequest) (Result, err
 }
 
 func (e *Engine) prepare(ctx context.Context, component update.Component, currentVersion, version string, target Target, parent string) (Release, string, string, error) {
-	if target.GOOS == "" || target.Arch == "" { target = NativeTarget() }
-	if err := os.MkdirAll(parent, 0o700); err != nil { return Release{}, "", "", pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "Could not create update staging parent.") }
-	if err := e.stage(StageResolve); err != nil { return Release{}, "", "", stageError(StageResolve, err) }
+	if target.GOOS == "" || target.Arch == "" {
+		target = NativeTarget()
+	}
+	if err := os.MkdirAll(parent, 0o700); err != nil {
+		return Release{}, "", "", pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "Could not create update staging parent.")
+	}
+	if err := e.stage(StageResolve); err != nil {
+		return Release{}, "", "", stageError(StageResolve, err)
+	}
 	release, err := e.source.Resolve(ctx, component, version)
-	if err != nil { return Release{}, "", "", normalize(err, pmuxerr.InstallReleaseLookupFailed, "Release lookup failed.") }
-	if err := validateRelease(release, component); err != nil { return Release{}, "", "", err }
-	if release.Version == currentVersion { return release, "", "", nil }
+	if err != nil {
+		return Release{}, "", "", normalize(err, pmuxerr.InstallReleaseLookupFailed, "Release lookup failed.")
+	}
+	if err := validateRelease(release, component); err != nil {
+		return Release{}, "", "", err
+	}
+	if release.Version == currentVersion {
+		return release, "", "", nil
+	}
 	workspace, err := os.MkdirTemp(parent, ".pmux-update-")
-	if err != nil { return Release{}, "", "", pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "Could not create private update staging.") }
-	if err := os.Chmod(workspace, 0o700); err != nil { _ = os.RemoveAll(workspace); return Release{}, "", "", pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "Could not secure update staging.") }
+	if err != nil {
+		return Release{}, "", "", pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "Could not create private update staging.")
+	}
+	if err := os.Chmod(workspace, 0o700); err != nil {
+		_ = os.RemoveAll(workspace)
+		return Release{}, "", "", pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "Could not secure update staging.")
+	}
 	archivePath := filepath.Join(workspace, release.ArchiveName)
 	checksumsPath := filepath.Join(workspace, "checksums.txt")
-	if err := e.stage(StageDownloadArchive); err != nil { return release, workspace, "", stageError(StageDownloadArchive, err) }
-	if err := e.source.Download(ctx, release.ArchiveURL, archivePath); err != nil { return release, workspace, "", normalize(err, pmuxerr.InstallDownloadFailed, "Release archive download failed.") }
-	if err := e.stage(StageDownloadChecksums); err != nil { return release, workspace, "", stageError(StageDownloadChecksums, err) }
-	if err := e.source.Download(ctx, release.ChecksumsURL, checksumsPath); err != nil { return release, workspace, "", normalize(err, pmuxerr.InstallDownloadFailed, "Release checksum download failed.") }
-	if err := e.stage(StageVerifyChecksum); err != nil { return release, workspace, "", stageError(StageVerifyChecksum, err) }
-	if err := verifyArchiveChecksum(archivePath, checksumsPath, release.ArchiveName); err != nil { return release, workspace, "", err }
-	if err := e.stage(StageExtract); err != nil { return release, workspace, "", stageError(StageExtract, err) }
+	if err := e.stage(StageDownloadArchive); err != nil {
+		return release, workspace, "", stageError(StageDownloadArchive, err)
+	}
+	if err := e.source.Download(ctx, release.ArchiveURL, archivePath); err != nil {
+		return release, workspace, "", normalize(err, pmuxerr.InstallDownloadFailed, "Release archive download failed.")
+	}
+	if err := e.stage(StageDownloadChecksums); err != nil {
+		return release, workspace, "", stageError(StageDownloadChecksums, err)
+	}
+	if err := e.source.Download(ctx, release.ChecksumsURL, checksumsPath); err != nil {
+		return release, workspace, "", normalize(err, pmuxerr.InstallDownloadFailed, "Release checksum download failed.")
+	}
+	if err := e.stage(StageVerifyChecksum); err != nil {
+		return release, workspace, "", stageError(StageVerifyChecksum, err)
+	}
+	if err := verifyArchiveChecksum(archivePath, checksumsPath, release.ArchiveName); err != nil {
+		return release, workspace, "", err
+	}
+	if err := e.stage(StageExtract); err != nil {
+		return release, workspace, "", stageError(StageExtract, err)
+	}
 	candidate, err := extractExecutable(archivePath, filepath.Join(workspace, "extracted"), release.ExecutableName)
-	if err != nil { return release, workspace, "", err }
-	if err := e.stage(StageVerifyExecutable); err != nil { return release, workspace, "", stageError(StageVerifyExecutable, err) }
-	if err := verifyExecutable(candidate, target); err != nil { return release, workspace, "", err }
+	if err != nil {
+		return release, workspace, "", err
+	}
+	if err := e.stage(StageVerifyExecutable); err != nil {
+		return release, workspace, "", stageError(StageVerifyExecutable, err)
+	}
+	if err := verifyExecutable(candidate, target); err != nil {
+		return release, workspace, "", err
+	}
 	return release, workspace, candidate, nil
 }
 
 func (e *Engine) rollbackSelf(current, previous, expectedVersion string, cause error) (bool, error) {
 	info, statErr := os.Stat(previous)
-	if statErr != nil { return false, rollbackError(cause, fmt.Errorf("stat retained executable: %w", statErr)) }
+	if statErr != nil {
+		return false, rollbackError(cause, fmt.Errorf("stat retained executable: %w", statErr))
+	}
 	tmp := current + ".rollback-tmp"
 	_ = os.Remove(tmp)
-	if err := copyFile(previous, tmp, info.Mode().Perm()); err != nil { return false, rollbackError(cause, err) }
-	if err := os.Rename(tmp, current); err != nil { _ = os.Remove(tmp); return false, rollbackError(cause, err) }
-	if err := syncDir(filepath.Dir(current)); err != nil { return false, rollbackError(cause, err) }
-	if err := e.selfVerifier.Postflight(context.Background(), current, expectedVersion); err != nil { return false, rollbackError(cause, fmt.Errorf("restored executable verification: %w", err)) }
+	if err := copyFile(previous, tmp, info.Mode().Perm()); err != nil {
+		return false, rollbackError(cause, err)
+	}
+	if err := os.Rename(tmp, current); err != nil {
+		_ = os.Remove(tmp)
+		return false, rollbackError(cause, err)
+	}
+	if err := syncDir(filepath.Dir(current)); err != nil {
+		return false, rollbackError(cause, err)
+	}
+	if err := e.selfVerifier.Postflight(context.Background(), current, expectedVersion); err != nil {
+		return false, rollbackError(cause, fmt.Errorf("restored executable verification: %w", err))
+	}
 	return true, &pmuxerr.Error{Code: pmuxerr.InstallRollbackAttempted, Class: pmuxerr.Upstream, Message: "Updated PMux failed verification and the previous executable was restored.", Cause: cause}
 }
 
 func (e *Engine) rollbackProxy(ctx context.Context, pointer, oldTarget, finalDir string, wasRunning bool, timeout time.Duration, cause error) (bool, error) {
 	var rollbackErrs []error
-	if err := e.service.Stop(ctx, timeout); err != nil { rollbackErrs = append(rollbackErrs, fmt.Errorf("stop failed version: %w", err)) }
-	if err := e.pointerStore.Swap(pointer, oldTarget); err != nil { rollbackErrs = append(rollbackErrs, fmt.Errorf("restore pointer: %w", err)) } else {
-		if err := e.service.Start(ctx); err != nil { rollbackErrs = append(rollbackErrs, fmt.Errorf("start restored proxy: %w", err)) } else {
-			if err := e.proxyVerifier.Health(ctx); err != nil { rollbackErrs = append(rollbackErrs, fmt.Errorf("restored proxy health: %w", err)) }
-			if err := e.proxyVerifier.Authenticated(ctx); err != nil { rollbackErrs = append(rollbackErrs, fmt.Errorf("restored proxy authentication: %w", err)) }
+	if err := e.service.Stop(ctx, timeout); err != nil {
+		rollbackErrs = append(rollbackErrs, fmt.Errorf("stop failed version: %w", err))
+	}
+	if err := e.pointerStore.Swap(pointer, oldTarget); err != nil {
+		rollbackErrs = append(rollbackErrs, fmt.Errorf("restore pointer: %w", err))
+	} else {
+		if err := e.service.Start(ctx); err != nil {
+			rollbackErrs = append(rollbackErrs, fmt.Errorf("start restored proxy: %w", err))
+		} else {
+			if err := e.proxyVerifier.Health(ctx); err != nil {
+				rollbackErrs = append(rollbackErrs, fmt.Errorf("restored proxy health: %w", err))
+			}
+			if err := e.proxyVerifier.Authenticated(ctx); err != nil {
+				rollbackErrs = append(rollbackErrs, fmt.Errorf("restored proxy authentication: %w", err))
+			}
 		}
 		if !wasRunning {
-			if err := e.service.Stop(ctx, timeout); err != nil { rollbackErrs = append(rollbackErrs, fmt.Errorf("restore stopped state: %w", err)) }
+			if err := e.service.Stop(ctx, timeout); err != nil {
+				rollbackErrs = append(rollbackErrs, fmt.Errorf("restore stopped state: %w", err))
+			}
 		}
 	}
-	if len(rollbackErrs) == 0 { _ = os.RemoveAll(finalDir) }
-	if len(rollbackErrs) > 0 { return false, rollbackError(cause, errors.Join(rollbackErrs...)) }
+	if len(rollbackErrs) == 0 {
+		_ = os.RemoveAll(finalDir)
+	}
+	if len(rollbackErrs) > 0 {
+		return false, rollbackError(cause, errors.Join(rollbackErrs...))
+	}
 	return true, &pmuxerr.Error{Code: pmuxerr.InstallRollbackAttempted, Class: pmuxerr.Upstream, Message: "Updated CLIProxyAPI failed verification and was rolled back to the previous version.", Cause: cause}
 }
 
 func requireManaged(component update.Component, ownership Ownership) error {
-	if ownership == OwnershipManaged { return nil }
+	if ownership == OwnershipManaged {
+		return nil
+	}
 	message := "This component is not PMux-managed; update it with its owning installation method."
-	if ownership == OwnershipAdopted && component == update.Proxy { message = "CLIProxyAPI is adopted, not PMux-managed; update it with its owning installation method." }
-	if ownership == OwnershipPackageManaged && component == update.Self { message = "PMux was installed by a package manager; update it with the package manager." }
+	if ownership == OwnershipAdopted && component == update.Proxy {
+		message = "CLIProxyAPI is adopted, not PMux-managed; update it with its owning installation method."
+	}
+	if ownership == OwnershipPackageManaged && component == update.Self {
+		message = "PMux was installed by a package manager; update it with the package manager."
+	}
 	return &pmuxerr.Error{Code: pmuxerr.ConfigMutationConflict, Class: pmuxerr.User, Message: message}
 }
 
@@ -470,28 +540,42 @@ func validateRelease(release Release, component update.Component) error {
 }
 
 func (e *Engine) stage(stage Stage) error {
-	if e.stageHook == nil { return nil }
+	if e.stageHook == nil {
+		return nil
+	}
 	return e.stageHook(stage)
 }
 
 func stageError(stage Stage, err error) error {
 	code, class := pmuxerr.InstallRollbackAttempted, pmuxerr.Environment
 	switch stage {
-	case StageResolve: code = pmuxerr.InstallReleaseLookupFailed
-	case StageDownloadArchive, StageDownloadChecksums: code = pmuxerr.InstallDownloadFailed
-	case StageVerifyChecksum, StageExtract, StageVerifyExecutable, StagePreflight: code = pmuxerr.InstallIntegrityFailed; class = pmuxerr.Upstream
-	case StageStopService, StageStartService: code = pmuxerr.ServiceStartFailed
-	case StageHealth: code = pmuxerr.ServiceHealthDeadline
-	case StageAuthenticate: code = pmuxerr.ManagementAuthRejected
-	case StageModels: code = pmuxerr.ManagementUnreachable
+	case StageResolve:
+		code = pmuxerr.InstallReleaseLookupFailed
+	case StageDownloadArchive, StageDownloadChecksums:
+		code = pmuxerr.InstallDownloadFailed
+	case StageVerifyChecksum, StageExtract, StageVerifyExecutable, StagePreflight:
+		code = pmuxerr.InstallIntegrityFailed
+		class = pmuxerr.Upstream
+	case StageStopService, StageStartService:
+		code = pmuxerr.ServiceStartFailed
+	case StageHealth:
+		code = pmuxerr.ServiceHealthDeadline
+	case StageAuthenticate:
+		code = pmuxerr.ManagementAuthRejected
+	case StageModels:
+		code = pmuxerr.ManagementUnreachable
 	}
 	return pmuxerr.Wrap(err, code, class, "Update failed at stage "+string(stage)+".")
 }
 
 func normalize(err error, code, message string) error {
-	if err == nil { return nil }
+	if err == nil {
+		return nil
+	}
 	var pe *pmuxerr.Error
-	if errors.As(err, &pe) { return err }
+	if errors.As(err, &pe) {
+		return err
+	}
 	return pmuxerr.Wrap(err, code, pmuxerr.Environment, message)
 }
 
@@ -499,54 +583,85 @@ func rollbackError(cause, rollback error) error {
 	return &pmuxerr.Error{Code: pmuxerr.InstallRollbackAttempted, Class: pmuxerr.Internal, Message: "Update failed and rollback could not be verified.", Evidence: []string{"manual recovery is required"}, Cause: errors.Join(cause, rollback)}
 }
 
-func missingSource() error { return &pmuxerr.Error{Code: pmuxerr.InstallReleaseLookupFailed, Class: pmuxerr.Internal, Message: "Release source is unavailable."} }
-func coalesce(err, fallback error) error { if err != nil { return err }; return fallback }
+func missingSource() error {
+	return &pmuxerr.Error{Code: pmuxerr.InstallReleaseLookupFailed, Class: pmuxerr.Internal, Message: "Release source is unavailable."}
+}
+func coalesce(err, fallback error) error {
+	if err != nil {
+		return err
+	}
+	return fallback
+}
 
 func fileHash(path string) ([sha256.Size]byte, error) {
 	var out [sha256.Size]byte
 	f, err := os.Open(path)
-	if err != nil { return out, err }
+	if err != nil {
+		return out, err
+	}
 	defer f.Close()
 	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil { return out, err }
+	if _, err := io.Copy(h, f); err != nil {
+		return out, err
+	}
 	copy(out[:], h.Sum(nil))
 	return out, nil
 }
 
 func copyFileAtomic(source, destination string, mode os.FileMode) error {
 	tmp, err := os.CreateTemp(filepath.Dir(destination), ".pmux-copy-")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	tmpName := tmp.Name()
 	_ = tmp.Close()
 	_ = os.Remove(tmpName)
 	defer os.Remove(tmpName)
-	if err := copyFile(source, tmpName, mode); err != nil { return err }
-	if err := os.Rename(tmpName, destination); err != nil { return err }
+	if err := copyFile(source, tmpName, mode); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, destination); err != nil {
+		return err
+	}
 	return syncDir(filepath.Dir(destination))
 }
 
 func copyFile(source, destination string, mode os.FileMode) error {
 	in, err := os.Open(source)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	defer in.Close()
 	out, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	_, copyErr := io.Copy(out, in)
 	syncErr := out.Sync()
 	closeErr := out.Close()
-	if copyErr != nil { return copyErr }
-	if syncErr != nil { return syncErr }
+	if copyErr != nil {
+		return copyErr
+	}
+	if syncErr != nil {
+		return syncErr
+	}
 	return closeErr
 }
 
 func atomicSymlink(target, pointer string) error {
 	tmp, err := os.CreateTemp(filepath.Dir(pointer), ".pmux-current-")
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	tmpName := tmp.Name()
 	_ = tmp.Close()
 	_ = os.Remove(tmpName)
 	defer os.Remove(tmpName)
-	if err := os.Symlink(target, tmpName); err != nil { return err }
-	if err := os.Rename(tmpName, pointer); err != nil { return err }
+	if err := os.Symlink(target, tmpName); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, pointer); err != nil {
+		return err
+	}
 	return syncDir(filepath.Dir(pointer))
 }

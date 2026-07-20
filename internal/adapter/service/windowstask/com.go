@@ -40,25 +40,25 @@ const (
 // IExecAction.Arguments separately and must never construct schtasks /TR or a
 // shell command.
 type ExecAction struct {
-	Executable      string
-	Arguments       []string
+	Executable       string
+	Arguments        []string
 	WorkingDirectory string
 }
 
 // TaskDefinition is the subset of a Task Scheduler 2.0 definition required by
 // PMux. It represents one current-user, on-logon task.
 type TaskDefinition struct {
-	Name                   string
-	Description            string
-	Author                 string
-	Enabled                bool
-	LogonTrigger           bool
+	Name                    string
+	Description             string
+	Author                  string
+	Enabled                 bool
+	LogonTrigger            bool
 	RunOnlyWhenUserLoggedOn bool
-	RunLevel               RunLevel
-	MultipleInstances      MultipleInstancesPolicy
-	RestartCount           int
-	RestartInterval        time.Duration
-	Exec                   ExecAction
+	RunLevel                RunLevel
+	MultipleInstances       MultipleInstancesPolicy
+	RestartCount            int
+	RestartInterval         time.Duration
+	Exec                    ExecAction
 }
 
 // RegisteredTask is the observable state returned by Task Scheduler COM.

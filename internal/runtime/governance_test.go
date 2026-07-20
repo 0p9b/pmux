@@ -166,7 +166,7 @@ func TestExportMutationsUseSafeTargetsAndRespectContention(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer holder.Release()
+			defer func() { _ = holder.Release() }()
 			var calls atomic.Int32
 			governed, err := NewGovernedUseCases(app.UseCaseFunc(func(_ context.Context, _ app.Invocation, _ app.EventSink) (app.Result, error) {
 				calls.Add(1)
@@ -293,7 +293,7 @@ func TestGovernedMutationLockContentionRejectsBeforeDispatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer holder.Release()
+	defer func() { _ = holder.Release() }()
 
 	var calls atomic.Int32
 	governed, err := NewGovernedUseCases(app.UseCaseFunc(func(_ context.Context, _ app.Invocation, _ app.EventSink) (app.Result, error) {

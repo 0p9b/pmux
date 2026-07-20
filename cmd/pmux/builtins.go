@@ -75,8 +75,12 @@ func versionCommand(d dispatcher) *cobra.Command {
 			"Config root: " + report.ConfigRoot,
 			"CLIProxyAPI: unknown (no safe recorded or detected version)",
 		}
-		if report.Commit != "" { human = append(human, "Commit: "+report.Commit) }
-		if report.Date != "" { human = append(human, "Built: "+report.Date) }
+		if report.Commit != "" {
+			human = append(human, "Commit: "+report.Commit)
+		}
+		if report.Date != "" {
+			human = append(human, "Built: "+report.Date)
+		}
 		return builtinOutputError(renderResult(d.deps.Out, app.Result{Data: report, Human: human}, d.flags.JSON))
 	}
 	return cmd
@@ -99,11 +103,15 @@ func resolveConfigRoot(deps dependencies, override string) (string, error) {
 		return filepath.Join(home, "Library", "Application Support", "PMux"), nil
 	case "windows":
 		root := deps.Getenv("APPDATA")
-		if root == "" { return "", configRootError(fmt.Errorf("APPDATA is not set")) }
-		return strings.TrimRight(root, `\\/`) + `\PMux`, nil
+		if root == "" {
+			return "", configRootError(fmt.Errorf("APPDATA is not set"))
+		}
+		return strings.TrimRight(root, `\/`) + `\PMux`, nil
 	default:
 		root := deps.Getenv("XDG_CONFIG_HOME")
-		if root == "" { root = filepath.Join(home, ".config") }
+		if root == "" {
+			root = filepath.Join(home, ".config")
+		}
 		return filepath.Join(root, "pmux"), nil
 	}
 }
@@ -115,6 +123,8 @@ func configRootError(cause error) error {
 }
 
 func builtinOutputError(cause error) error {
-	if cause == nil { return nil }
+	if cause == nil {
+		return nil
+	}
 	return pmuxerr.Wrap(cause, pmuxerr.UnhandledInternal, pmuxerr.Internal, "PMux could not write command output.")
 }

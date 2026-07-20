@@ -49,21 +49,21 @@ func finishSetupTUI(ctx context.Context, deps dependencies, flags *globalFlags, 
 	progress := final.Progress()
 	for _, message := range progress.Messages {
 		if message != "" {
-			fmt.Fprintln(deps.Out, pmuxtui.SafeText(message))
+			_, _ = fmt.Fprintln(deps.Out, pmuxtui.SafeText(message))
 		}
 	}
 	if progress.CoreComplete {
-		fmt.Fprintln(deps.Out, "CLIProxyAPI core setup is complete.")
+		_, _ = fmt.Fprintln(deps.Out, "CLIProxyAPI core setup is complete.")
 	}
 	for _, action := range progress.NextActions {
-		fmt.Fprintln(deps.Out, "Next:", pmuxtui.SafeText(action))
+		_, _ = fmt.Fprintln(deps.Out, "Next:", pmuxtui.SafeText(action))
 	}
 	if !final.LaunchRequested() {
 		return nil
 	}
 	result, err := deps.UseCases.Execute(ctx, app.Invocation{
 		Operation: app.OpLaunch,
-		Options: map[string]any{"client": "claude", "model": progress.SelectedModel},
+		Options:   map[string]any{"client": "claude", "model": progress.SelectedModel},
 		ConfigDir: flags.ConfigDir, Interactive: true,
 	}, nil)
 	if err != nil {
@@ -76,8 +76,8 @@ func (f *setupWizardFacade) Execute(ctx context.Context, action pmuxtui.SetupAct
 	switch action.Kind {
 	case pmuxtui.SetupActionCore:
 		result, err := f.execute(ctx, app.Invocation{
-			Operation: app.OpSetup,
-			Options: map[string]any{"mode": action.Mode, "proxy_path": action.ProxyPath, "config_path": action.ConfigPath, "harden": action.Harden},
+			Operation:   app.OpSetup,
+			Options:     map[string]any{"mode": action.Mode, "proxy_path": action.ProxyPath, "config_path": action.ConfigPath, "harden": action.Harden},
 			Interactive: true,
 		}, nil)
 		if err != nil {
@@ -87,7 +87,7 @@ func (f *setupWizardFacade) Execute(ctx context.Context, action pmuxtui.SetupAct
 		if action.Mode == "adopt" {
 			return pmuxtui.SetupProgress{
 				Stage: pmuxtui.SetupComplete, Mode: action.Mode, CoreComplete: coreComplete,
-				Messages: append(result.Human, "Adoption is complete; no provider or client setting was changed implicitly."),
+				Messages:    append(result.Human, "Adoption is complete; no provider or client setting was changed implicitly."),
 				NextActions: []string{"pmux providers login <provider>", "pmux models list --refresh", "pmux launch --client claude --model <id>"},
 			}, nil
 		}
@@ -180,7 +180,6 @@ func setupOAuthCapable(value any) bool {
 	}
 	return false
 }
-
 
 func setupModelChoices(data any) []pmuxtui.SetupChoice {
 	value := mapFrom(data)

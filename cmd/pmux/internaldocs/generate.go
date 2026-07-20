@@ -30,7 +30,7 @@ func Generate(newRoot func() *cobra.Command, referenceDir, manDir string) error 
 	}
 	referenceRoot := newRoot()
 	if referenceRoot == nil {
-		return fmt.Errorf("Cobra root factory returned nil")
+		return fmt.Errorf("cobra root factory returned nil")
 	}
 	setDeterministic(referenceRoot)
 	if err := doc.GenMarkdownTree(referenceRoot, referenceDir); err != nil {
@@ -38,7 +38,7 @@ func Generate(newRoot func() *cobra.Command, referenceDir, manDir string) error 
 	}
 	manRoot := newRoot()
 	if manRoot == nil {
-		return fmt.Errorf("Cobra root factory returned nil")
+		return fmt.Errorf("cobra root factory returned nil")
 	}
 	setDeterministic(manRoot)
 	header := &doc.GenManHeader{Title: "PMUX", Section: "1", Source: "PMux", Manual: "PMux Manual", Date: &manualDate}

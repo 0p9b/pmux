@@ -117,7 +117,7 @@ func (g *GovernedUseCases) recoverInterruptedPending(ctx context.Context) error 
 		}
 		return err
 	}
-	defer handle.Release()
+	defer func() { _ = handle.Release() }()
 
 	pending, err := g.journal.Pending()
 	if err != nil {

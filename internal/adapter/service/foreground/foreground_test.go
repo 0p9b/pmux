@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
-	"strings"
 	goruntime "runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +18,7 @@ import (
 	"github.com/0p9b/pmux/internal/domain/service"
 	"github.com/0p9b/pmux/internal/pmuxerr"
 )
+
 func TestMain(m *testing.M) {
 	for index, argument := range os.Args {
 		if argument == "-config" && index+1 < len(os.Args) {
@@ -47,7 +48,6 @@ func (b *lockedBuffer) String() string {
 	defer b.mu.Unlock()
 	return b.text.String()
 }
-
 
 type fakeChecker struct {
 	result health.Result
@@ -115,12 +115,12 @@ func testSpec(t *testing.T) service.ServiceSpec {
 	}
 	return service.ServiceSpec{
 		InstanceID: "default",
-		Identity: service.Identity(service.BackendForeground, "default"),
-		PMuxPath: filepath.Join(root, "pmux-service-host"),
+		Identity:   service.Identity(service.BackendForeground, "default"),
+		PMuxPath:   filepath.Join(root, "pmux-service-host"),
 		BinaryPath: filepath.Join(root, "cli-proxy-api"),
 		ConfigPath: filepath.Join(root, "config.yaml"),
 		RuntimeDir: runtimeDir,
-		LogDir: filepath.Join(root, "logs"),
+		LogDir:     filepath.Join(root, "logs"),
 		Environment: []string{
 			"PATH=/usr/bin", "HOME=/home/user", "PGSTORE_HOST=attacker", "OBJECTSTORE_TOKEN=secret",
 			"GITSTORE_URL=foreign", "ANTHROPIC_AUTH_TOKEN=secret", "MANAGEMENT_PASSWORD=secret",

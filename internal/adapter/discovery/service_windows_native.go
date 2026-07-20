@@ -14,7 +14,7 @@ import (
 
 const (
 	coinitApartmentThreaded = 0x2
-	clsctxInprocServer       = 0x1
+	clsctxInprocServer      = 0x1
 	dispatchMethod          = 0x1
 	dispatchPropertyGet     = 0x2
 	taskEnumHidden          = 0x1
@@ -28,17 +28,17 @@ const (
 )
 
 var (
-	ole32                    = windows.NewLazySystemDLL("ole32.dll")
-	oleaut32                 = windows.NewLazySystemDLL("oleaut32.dll")
-	procCoInitializeEx       = ole32.NewProc("CoInitializeEx")
-	procCoUninitialize       = ole32.NewProc("CoUninitialize")
-	procCoCreateInstance     = ole32.NewProc("CoCreateInstance")
-	procSysAllocString       = oleaut32.NewProc("SysAllocString")
-	procSysFreeString        = oleaut32.NewProc("SysFreeString")
-	procSysStringLen         = oleaut32.NewProc("SysStringLen")
-	procVariantClear         = oleaut32.NewProc("VariantClear")
-	classTaskScheduler       = windows.GUID{Data1: 0x0F87369F, Data2: 0xA4E5, Data3: 0x4CFC, Data4: [8]byte{0xBD, 0x3E, 0x73, 0xE6, 0x15, 0x45, 0x72, 0xDD}}
-	interfaceDispatch        = windows.GUID{Data1: 0x00020400, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
+	ole32                = windows.NewLazySystemDLL("ole32.dll")
+	oleaut32             = windows.NewLazySystemDLL("oleaut32.dll")
+	procCoInitializeEx   = ole32.NewProc("CoInitializeEx")
+	procCoUninitialize   = ole32.NewProc("CoUninitialize")
+	procCoCreateInstance = ole32.NewProc("CoCreateInstance")
+	procSysAllocString   = oleaut32.NewProc("SysAllocString")
+	procSysFreeString    = oleaut32.NewProc("SysFreeString")
+	procSysStringLen     = oleaut32.NewProc("SysStringLen")
+	procVariantClear     = oleaut32.NewProc("VariantClear")
+	classTaskScheduler   = windows.GUID{Data1: 0x0F87369F, Data2: 0xA4E5, Data3: 0x4CFC, Data4: [8]byte{0xBD, 0x3E, 0x73, 0xE6, 0x15, 0x45, 0x72, 0xDD}}
+	interfaceDispatch    = windows.GUID{Data1: 0x00020400, Data2: 0x0000, Data3: 0x0000, Data4: [8]byte{0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}}
 )
 
 // NativeScheduledTaskSource uses Task Scheduler 2.0 COM Automation in read-only
@@ -287,22 +287,22 @@ type automationVariant struct {
 }
 
 type dispatchParameters struct {
-	arguments     *automationVariant
+	arguments      *automationVariant
 	namedArguments *int32
-	argumentCount uint32
-	namedCount    uint32
+	argumentCount  uint32
+	namedCount     uint32
 }
 
 type exceptionInfo struct {
-	code             uint16
-	reserved         uint16
-	source           uintptr
-	description      uintptr
-	helpFile         uintptr
-	helpContext      uint32
-	reservedPointer  uintptr
-	deferredFillIn   uintptr
-	scode            int32
+	code            uint16
+	reserved        uint16
+	source          uintptr
+	description     uintptr
+	helpFile        uintptr
+	helpContext     uint32
+	reservedPointer uintptr
+	deferredFillIn  uintptr
+	scode           int32
 }
 
 func (d *automationDispatch) release() {

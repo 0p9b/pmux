@@ -70,7 +70,7 @@ func (s *GitHubSource) Resolve(ctx context.Context, component update.Component, 
 	if err != nil {
 		return Release{}, pmuxerr.Wrap(err, pmuxerr.InstallReleaseLookupFailed, pmuxerr.Environment, "Could not fetch release metadata.")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		return Release{}, &pmuxerr.Error{Code: pmuxerr.InstallReleaseLookupFailed, Class: pmuxerr.Upstream, Message: "Could not fetch release metadata.", Evidence: []string{fmt.Sprintf("GitHub returned HTTP %d", resp.StatusCode)}}
@@ -112,11 +112,15 @@ func (s *GitHubSource) component(component update.Component) (repo, executable, 
 	switch component {
 	case update.Self:
 		executable = "pmux"
-		if s.Target.GOOS == "windows" { executable += ".exe" }
+		if s.Target.GOOS == "windows" {
+			executable += ".exe"
+		}
 		return s.SelfRepo, executable, "pmux_", nil
 	case update.Proxy:
 		executable = "cli-proxy-api"
-		if s.Target.GOOS == "windows" { executable += ".exe" }
+		if s.Target.GOOS == "windows" {
+			executable += ".exe"
+		}
 		return s.ProxyRepo, executable, "CLIProxyAPI_", nil
 	default:
 		return "", "", "", &pmuxerr.Error{Code: pmuxerr.InstallReleaseLookupFailed, Class: pmuxerr.User, Message: "Unknown update component."}
@@ -132,7 +136,7 @@ func (s *GitHubSource) Download(ctx context.Context, sourceURL, destination stri
 	if err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.InstallDownloadFailed, pmuxerr.Environment, "Asset download failed.")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		return &pmuxerr.Error{Code: pmuxerr.InstallDownloadFailed, Class: pmuxerr.Upstream, Message: "Asset download failed.", Evidence: []string{fmt.Sprintf("server returned HTTP %d", resp.StatusCode)}}
@@ -145,15 +149,23 @@ func (s *GitHubSource) Download(ctx context.Context, sourceURL, destination stri
 		return pmuxerr.Wrap(err, pmuxerr.InstallDownloadFailed, pmuxerr.Environment, "Could not create the staged download.")
 	}
 	limit := s.MaxDownload
-	if limit <= 0 { limit = defaultMaxDownload }
+	if limit <= 0 {
+		limit = defaultMaxDownload
+	}
 	written, copyErr := io.Copy(f, io.LimitReader(resp.Body, limit+1))
 	syncErr := f.Sync()
 	closeErr := f.Close()
 	if copyErr != nil || syncErr != nil || closeErr != nil || written > limit {
 		_ = os.Remove(destination)
-		if written > limit { copyErr = fmt.Errorf("asset exceeds %d bytes", limit) }
-		if copyErr == nil { copyErr = syncErr }
-		if copyErr == nil { copyErr = closeErr }
+		if written > limit {
+			copyErr = fmt.Errorf("asset exceeds %d bytes", limit)
+		}
+		if copyErr == nil {
+			copyErr = syncErr
+		}
+		if copyErr == nil {
+			copyErr = closeErr
+		}
 		return pmuxerr.Wrap(copyErr, pmuxerr.InstallDownloadFailed, pmuxerr.Environment, "Asset download could not be stored safely.")
 	}
 	return nil

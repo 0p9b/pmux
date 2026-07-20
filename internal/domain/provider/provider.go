@@ -53,9 +53,9 @@ type ProviderAuthenticator interface {
 }
 
 type Definition struct {
-	ID management.ProviderID
-	Name string
-	Flows []AuthFlow
+	ID              management.ProviderID
+	Name            string
+	Flows           []AuthFlow
 	SubprocessFlags map[AuthFlow][]string
 }
 

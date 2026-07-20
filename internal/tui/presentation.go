@@ -87,30 +87,30 @@ func makePalette(noColor, highContrast, plain bool) palette {
 	}
 	if highContrast {
 		return palette{
-			title: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("0")),
-			active: lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("15")),
-			focus: lipgloss.NewStyle().Bold(true).Reverse(true),
-			muted: lipgloss.NewStyle().Foreground(lipgloss.Color("7")),
-			error: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("1")),
+			title:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("0")),
+			active:  lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("15")),
+			focus:   lipgloss.NewStyle().Bold(true).Reverse(true),
+			muted:   lipgloss.NewStyle().Foreground(lipgloss.Color("7")),
+			error:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("1")),
 			warning: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("0")).Background(lipgloss.Color("11")),
 		}
 	}
 	return palette{
-		title: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12")),
-		active: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14")),
-		focus: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("4")),
-		muted: lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
-		error: lipgloss.NewStyle().Foreground(lipgloss.Color("9")),
+		title:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12")),
+		active:  lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14")),
+		focus:   lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Background(lipgloss.Color("4")),
+		muted:   lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
+		error:   lipgloss.NewStyle().Foreground(lipgloss.Color("9")),
 		warning: lipgloss.NewStyle().Foreground(lipgloss.Color("11")),
 	}
 }
 
 var (
-	ansiPattern = regexp.MustCompile(`(?:\x1b\][^\x07]*(?:\x07|\x1b\\))|(?:\x1b\[[0-?]*[ -/]*[@-~])`)
-	bearerPattern = regexp.MustCompile(`(?i)Bearer\s+[^\s]+`)
-	skPattern = regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{8,}\b`)
+	ansiPattern       = regexp.MustCompile(`(?:\x1b\][^\x07]*(?:\x07|\x1b\\))|(?:\x1b\[[0-?]*[ -/]*[@-~])`)
+	bearerPattern     = regexp.MustCompile(`(?i)Bearer\s+[^\s]+`)
+	skPattern         = regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{8,}\b`)
 	assignmentPattern = regexp.MustCompile(`(?i)(ANTHROPIC_AUTH_TOKEN|authorization|x-management-key|access_token|refresh_token|id_token|api[-_]?key|secret[-_]?key|password)\s*[:=]\s*[^\s,;}]+`)
-	urlPattern = regexp.MustCompile(`https?://[^\s]+`)
+	urlPattern        = regexp.MustCompile(`https?://[^\s]+`)
 )
 
 func safeText(value string) string {

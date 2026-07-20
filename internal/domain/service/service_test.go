@@ -6,7 +6,7 @@ func TestCanonicalIdentities(t *testing.T) {
 	t.Parallel()
 	cases := map[ServiceBackend]string{
 		BackendSystemdUser: "pmux-cliproxyapi@default.service",
-		BackendLaunchd: "dev.pmux.cliproxyapi.default",
+		BackendLaunchd:     "dev.pmux.cliproxyapi.default",
 		BackendWindowsTask: "PMux CLIProxyAPI (default)",
 	}
 	for backend, want := range cases {

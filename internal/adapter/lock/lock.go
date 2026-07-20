@@ -74,7 +74,7 @@ func (m *Manager) WithMutation(ctx context.Context, operation string, mutate fun
 	if err != nil {
 		return err
 	}
-	defer handle.Release()
+	defer func() { _ = handle.Release() }()
 	return mutate()
 }
 

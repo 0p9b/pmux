@@ -82,5 +82,5 @@ func (c *windowsNamedPipeConn) RemoteAddr() net.Addr { return windowsPipeAddr(c.
 
 type windowsPipeAddr string
 
-func (windowsPipeAddr) Network() string { return "npipe" }
+func (windowsPipeAddr) Network() string        { return "npipe" }
 func (address windowsPipeAddr) String() string { return string(address) }

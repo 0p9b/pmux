@@ -100,7 +100,6 @@ func ScrubbedEnvironment(parent []string, opts EnvironmentOptions) []string {
 	return out
 }
 
-
 // LoginArgs returns the closed, source-verified CLIProxyAPI login mapping.
 // The returned slice is independent and safe for the caller to append to.
 func LoginArgs(id management.ProviderID, flow provider.AuthFlow, noBrowser bool) ([]string, error) {

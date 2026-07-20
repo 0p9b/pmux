@@ -72,7 +72,7 @@ type DashboardSnapshot struct {
 	Models       int
 	RecentErrors []string
 	Warnings     []string
-	Recommended ActionID
+	Recommended  ActionID
 }
 
 type ProviderRow struct {
@@ -110,12 +110,12 @@ type LaunchSnapshot struct {
 }
 
 type DoctorRow struct {
-	ID        string
-	Status    Status
-	Severity  string
-	Summary   string
-	Evidence  []string
-	Fixable   bool
+	ID       string
+	Status   Status
+	Severity string
+	Summary  string
+	Evidence []string
+	Fixable  bool
 }
 
 type ServiceSnapshot struct {
@@ -149,6 +149,7 @@ type LogRow struct {
 	Message   string
 	RequestID string
 }
+
 func MaskSecret(value string) SecretMask {
 	return SecretMask(redact.Mask(value))
 }
@@ -156,7 +157,6 @@ func MaskSecret(value string) SecretMask {
 // SecretMask is the only secret-shaped value accepted by a presentation DTO.
 // It stores no complete secret.
 type SecretMask string
-
 
 func (s SecretMask) String() string {
 	if s == "" {

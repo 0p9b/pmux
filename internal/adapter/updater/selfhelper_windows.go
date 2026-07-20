@@ -128,4 +128,3 @@ func scheduleDeleteOnReboot(path string) error {
 	}
 	return windows.MoveFileEx(value, nil, windows.MOVEFILE_DELAY_UNTIL_REBOOT)
 }
-

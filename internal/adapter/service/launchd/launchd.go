@@ -31,9 +31,9 @@ const (
 )
 
 var (
-	instancePattern         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	instancePattern        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 	environmentNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-	terminalEscapePattern   = regexp.MustCompile(`(?:\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[@-_]|\x{009b}[0-?]*[ -/]*[@-~])`)
+	terminalEscapePattern  = regexp.MustCompile(`(?:\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[@-_]|\x{009b}[0-?]*[ -/]*[@-~])`)
 )
 
 // Runner is the narrow process boundary used for launchctl and log following.
@@ -288,7 +288,7 @@ func newRedactingReader(source io.ReadCloser) io.ReadCloser {
 	reader, writer := io.Pipe()
 	result := &redactingReader{reader: reader, source: source}
 	go func() {
-		defer result.closeSource()
+		defer func() { _ = result.closeSource() }()
 		scanner := bufio.NewScanner(source)
 		scanner.Buffer(make([]byte, 4096), maxLogLineBytes)
 		for scanner.Scan() {

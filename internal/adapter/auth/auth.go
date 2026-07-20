@@ -86,8 +86,8 @@ type Authenticator struct {
 	mu       sync.Mutex
 	sessions map[string]*activeSession
 }
-var _ provider.ProviderAuthenticator = (*Authenticator)(nil)
 
+var _ provider.ProviderAuthenticator = (*Authenticator)(nil)
 
 type activeSession struct {
 	pollMu     sync.Mutex
@@ -532,7 +532,6 @@ func (a *Authenticator) operationContext(ctx context.Context, active *activeSess
 	return context.WithTimeout(ctx, remaining)
 }
 
-
 func (a *Authenticator) timeoutState(state string) {
 	a.cancelState(state)
 }
@@ -686,22 +685,6 @@ func definitionFor(providerID management.ProviderID) (provider.Definition, bool)
 	return provider.Definition{}, false
 }
 
-func (a *Authenticator) rollbackNewProviderKey(ctx context.Context, kind management.ProviderKeyKind, id string) error {
-	if err := a.management.DeleteProviderKey(ctx, kind, id); err != nil {
-		return err
-	}
-	entries, err := a.management.ProviderKeys(ctx, kind)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.ID == id {
-			return errors.New("provider-key entry remained after compensating deletion")
-		}
-	}
-	return nil
-}
-
 func hasFlow(definition provider.Definition, flow provider.AuthFlow) bool {
 	for _, candidate := range definition.Flows {
 		if candidate == flow {
@@ -735,7 +718,6 @@ func providerKeyKind(providerID management.ProviderID) (management.ProviderKeyKi
 func cloneSnapshot(snapshot CredentialSnapshot) CredentialSnapshot {
 	return CredentialSnapshot{Files: append([]management.AuthFile(nil), snapshot.Files...)}
 }
-
 
 func safeProviderKey(key management.ProviderKey) management.ProviderKey {
 	safe := management.ProviderKey{ID: key.ID, Label: key.Label, Mask: key.Mask, Fields: make(map[string]string)}
@@ -779,7 +761,6 @@ func authContextError(ctx context.Context) *pmuxerr.Error {
 	}
 	return pmuxerr.New(pmuxerr.OAuthTimeout, pmuxerr.Upstream, "Authentication timed out after five minutes; no usable credential was recorded.")
 }
-
 
 func safeWrap(err error, code string, class pmuxerr.Class, message string) *pmuxerr.Error {
 	// The underlying management/subprocess error may contain a callback URL,

@@ -22,11 +22,11 @@ import (
 const eventVersion = 1
 
 const (
-	StateInProgress = "in_progress"
-	StateCompleted  = "completed"
-	StateFailed     = "failed"
+	StateInProgress  = "in_progress"
+	StateCompleted   = "completed"
+	StateFailed      = "failed"
 	StateInterrupted = "interrupted"
-	StateRolledBack = "rolled_back"
+	StateRolledBack  = "rolled_back"
 )
 
 type Option func(*Journal)

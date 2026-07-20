@@ -2,7 +2,6 @@ package updater
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -21,26 +20,26 @@ import (
 const recoveryVersion = 1
 
 type recoveryRecord struct {
-	Version        int              `json:"version"`
-	Component      update.Component `json:"component"`
-	Phase          string           `json:"phase"`
-	Workspace      string           `json:"workspace,omitempty"`
-	ArchivePath    string           `json:"archive_path,omitempty"`
-	ArchiveSHA256  string           `json:"archive_sha256,omitempty"`
-	CandidatePath  string           `json:"candidate_path,omitempty"`
-	CandidateSHA256 string          `json:"candidate_sha256,omitempty"`
-	CurrentPath    string           `json:"current_path,omitempty"`
-	PreviousPath   string           `json:"previous_path,omitempty"`
-	CurrentSHA256  string           `json:"current_sha256,omitempty"`
-	PointerPath    string           `json:"pointer_path,omitempty"`
-	OldTarget      string           `json:"old_target,omitempty"`
-	NewTarget      string           `json:"new_target,omitempty"`
-	FinalDir       string           `json:"final_dir,omitempty"`
-	WasRunning     bool             `json:"was_running,omitempty"`
-	OldVersion     string           `json:"old_version,omitempty"`
-	NewVersion     string           `json:"new_version,omitempty"`
-	StopTimeoutNS  int64            `json:"stop_timeout_ns,omitempty"`
-	UpdatedAt      time.Time        `json:"updated_at"`
+	Version         int              `json:"version"`
+	Component       update.Component `json:"component"`
+	Phase           string           `json:"phase"`
+	Workspace       string           `json:"workspace,omitempty"`
+	ArchivePath     string           `json:"archive_path,omitempty"`
+	ArchiveSHA256   string           `json:"archive_sha256,omitempty"`
+	CandidatePath   string           `json:"candidate_path,omitempty"`
+	CandidateSHA256 string           `json:"candidate_sha256,omitempty"`
+	CurrentPath     string           `json:"current_path,omitempty"`
+	PreviousPath    string           `json:"previous_path,omitempty"`
+	CurrentSHA256   string           `json:"current_sha256,omitempty"`
+	PointerPath     string           `json:"pointer_path,omitempty"`
+	OldTarget       string           `json:"old_target,omitempty"`
+	NewTarget       string           `json:"new_target,omitempty"`
+	FinalDir        string           `json:"final_dir,omitempty"`
+	WasRunning      bool             `json:"was_running,omitempty"`
+	OldVersion      string           `json:"old_version,omitempty"`
+	NewVersion      string           `json:"new_version,omitempty"`
+	StopTimeoutNS   int64            `json:"stop_timeout_ns,omitempty"`
+	UpdatedAt       time.Time        `json:"updated_at"`
 }
 
 type recoveryManager struct {
@@ -339,19 +338,6 @@ func phaseHasServiceSideEffects(phase string) bool {
 
 func invalidRecoveryPath(name string) error {
 	return &pmuxerr.Error{Code: pmuxerr.JournalCorrupt, Class: pmuxerr.Internal, Message: "Update recovery record contains an unsafe " + name + " path."}
-}
-
-func archiveDigest(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func (r recoveryRecord) String() string {

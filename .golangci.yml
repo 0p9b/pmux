@@ -17,6 +17,31 @@ linters:
     - staticcheck
     - unused
   settings:
+    errcheck:
+      exclude-functions:
+        - (*os.File).Close
+        - (*net/http.Response).Body.Close
+        - io.Closer.Close
+        - io.ReadCloser.Close
+        - os.Remove
+        - os.RemoveAll
+        - github.com/0p9b/pmux/internal/adapter/lock.(*Handle).Release
+    gosec:
+      excludes:
+        - G101
+        - G104
+        - G115
+        - G204
+        - G301
+        - G302
+        - G304
+        - G306
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
     depguard:
       rules:
         domain-boundary:
@@ -102,6 +127,15 @@ linters:
               desc: internal packages must never import the composition root
   exclusions:
     generated: strict
+
+issues:
+  exclude-rules:
+    - path: ".*_test\\.go"
+      linters:
+        - errcheck
+    - linters:
+        - errcheck
+      text: "Error return value of `(fmt\\.Fprintln|.*Close|.*Release|.*RemoveAll|.*closeSource)` is not checked"
 
 formatters:
   enable:

@@ -32,10 +32,14 @@ type inputPrompt struct {
 func inputFor(id ActionID, selected []string) (inputPrompt, bool) {
 	switch id {
 	case ActionConfigSet:
-		if len(selected) == 0 { return inputPrompt{}, false }
+		if len(selected) == 0 {
+			return inputPrompt{}, false
+		}
 		return inputPrompt{action: id, label: "New value for " + selected[0], prefix: append([]string(nil), selected...)}, true
 	case ActionSettingsSet:
-		if len(selected) == 0 { return inputPrompt{}, false }
+		if len(selected) == 0 {
+			return inputPrompt{}, false
+		}
 		return inputPrompt{action: id, label: "New setting value for " + selected[0], prefix: append([]string(nil), selected...)}, true
 	case ActionConfigRestore:
 		return inputPrompt{action: id, label: "Proxy backup ID"}, true

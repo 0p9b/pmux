@@ -47,10 +47,10 @@ func launcherForTest(t *testing.T, runner Runner, preflight ModelPreflight, sett
 			}
 			return filepath.Join(t.TempDir(), "claude"), nil
 		},
-		Runner: runner,
-		Environment: func() []string { return []string{"PATH=/bin", "KEEP=value"} },
-		ModelPreflight: preflight,
-		SettingsPath: settings,
+		Runner:               runner,
+		Environment:          func() []string { return []string{"PATH=/bin", "KEEP=value"} },
+		ModelPreflight:       preflight,
+		SettingsPath:         settings,
 		PersistenceStatePath: settings + ".state",
 	})
 }
@@ -111,7 +111,9 @@ func TestInvalidLaunchesNeverSpawnClaude(t *testing.T) {
 		{name: "old client", version: "1.9.9", model: "exact-model", preflight: func(context.Context, string) error { return nil }},
 		{name: "unparseable client", version: "current", model: "exact-model", preflight: func(context.Context, string) error { return nil }},
 		{name: "model unavailable", version: "2.1.0", model: "missing-model", preflight: func(_ context.Context, model string) error {
-			if model != "missing-model" { t.Fatalf("preflight model = %q", model) }
+			if model != "missing-model" {
+				t.Fatalf("preflight model = %q", model)
+			}
 			return unavailable
 		}, want: unavailable},
 	}
@@ -148,11 +150,11 @@ func TestLaunchUsesExactArgvEnvironmentCWDAndJSONSeparation(t *testing.T) {
 	workdir := t.TempDir()
 	var preflightModel string
 	launcher := New(Options{
-		LookPath: func(string) (string, error) { return filepath.Join(workdir, "claude"), nil },
-		Runner: runner,
-		Environment: func() []string { return parent },
+		LookPath:       func(string) (string, error) { return filepath.Join(workdir, "claude"), nil },
+		Runner:         runner,
+		Environment:    func() []string { return parent },
 		ModelPreflight: func(_ context.Context, model string) error { preflightModel = model; return nil },
-		Stdin: stdin, Stdout: stdout, Stderr: stderr, JSONMode: true,
+		Stdin:          stdin, Stdout: stdout, Stderr: stderr, JSONMode: true,
 		SettingsPath: filepath.Join(t.TempDir(), "settings.json"),
 	})
 	spec := domainclient.LaunchSpec{
@@ -195,14 +197,18 @@ func TestNormalLaunchDoesNotMutateSettings(t *testing.T) {
 	dir := t.TempDir()
 	settings := filepath.Join(dir, "settings.json")
 	original := []byte("{\n  \"theme\" : \"dark\",\n  \"env\": {\"UNRELATED\":\"yes\"}\n}\n")
-	if err := os.WriteFile(settings, original, 0o600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(settings, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	runner := &recordingRunner{output: []byte("2.2.0")}
 	launcher := launcherForTest(t, runner, func(context.Context, string) error { return nil }, settings)
 	if _, err := launcher.Launch(context.Background(), domainclient.LaunchSpec{Client: domainclient.Claude, Model: "exact", BaseURL: "http://127.0.0.1:8317", Token: "sk-123456789012", WorkingDir: dir}); err != nil {
 		t.Fatalf("Launch error: %v", err)
 	}
 	after, err := os.ReadFile(settings)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(after, original) {
 		t.Fatalf("normal launch changed settings\n got: %q\nwant: %q", after, original)
 	}
@@ -227,7 +233,7 @@ func TestLaunchReturnsClientExitResult(t *testing.T) {
 	}
 }
 
-type exitRunner struct { recordingRunner }
+type exitRunner struct{ recordingRunner }
 
 func (r *exitRunner) Run(ctx context.Context, process Process) error {
 	r.process = process
@@ -243,23 +249,27 @@ func TestPersistentSlotsRestoreSettingsByteForByte(t *testing.T) {
 	settings := filepath.Join(dir, "settings.json")
 	state := filepath.Join(dir, "pmux-state", "claude.json")
 	original := []byte("{\n  \"theme\" : \"dark\",\n  \"env\": { \"UNRELATED\" : \"kept\", \"ANTHROPIC_AUTH_TOKEN\": \"old-secret-canary\", \"ANTHROPIC_DEFAULT_HAIKU_MODEL\": \"old-haiku\" },\n  \"permissions\": {\"allow\": [\"Read\"]}\n}\n")
-	if err := os.WriteFile(settings, original, 0o644); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(settings, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	var preflighted []string
 	secret := "sk-canary-1234567890"
 	launcher := New(Options{
 		SettingsPath: settings, PersistenceStatePath: state,
 		ModelPreflight: func(_ context.Context, model string) error { preflighted = append(preflighted, model); return nil },
-		Now: func() time.Time { return time.Date(2026, 7, 20, 12, 34, 56, 0, time.UTC) },
+		Now:            func() time.Time { return time.Date(2026, 7, 20, 12, 34, 56, 0, time.UTC) },
 	})
 	plan, err := launcher.PlanPersistent(context.Background(), PersistentSpec{
 		BaseURL: "http://127.0.0.1:8317", Token: secret,
 		Slots: PersistentSlots{
-			Opus: SlotUpdate{Action: SlotSet, Model: "exact-opus"},
+			Opus:   SlotUpdate{Action: SlotSet, Model: "exact-opus"},
 			Sonnet: SlotUpdate{Action: SlotSet, Model: "exact-sonnet"},
-			Haiku: SlotUpdate{Action: SlotUnmanaged},
+			Haiku:  SlotUpdate{Action: SlotUnmanaged},
 		},
 	})
-	if err != nil { t.Fatalf("PlanPersistent error: %v", err) }
+	if err != nil {
+		t.Fatalf("PlanPersistent error: %v", err)
+	}
 	if !reflect.DeepEqual(preflighted, []string{"exact-opus", "exact-sonnet"}) {
 		t.Fatalf("preflighted = %#v", preflighted)
 	}
@@ -276,9 +286,17 @@ func TestPersistentSlotsRestoreSettingsByteForByte(t *testing.T) {
 		t.Fatalf("Persist error: %v", err)
 	}
 	persisted, err := os.ReadFile(settings)
-	if err != nil { t.Fatal(err) }
-	var decoded struct { Env map[string]string `json:"env"`; Theme string `json:"theme"`; Permissions map[string][]string `json:"permissions"` }
-	if err := jsonUnmarshal(persisted, &decoded); err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		Env         map[string]string   `json:"env"`
+		Theme       string              `json:"theme"`
+		Permissions map[string][]string `json:"permissions"`
+	}
+	if err := jsonUnmarshal(persisted, &decoded); err != nil {
+		t.Fatal(err)
+	}
 	if decoded.Env[baseURLEnv] != "http://127.0.0.1:8317" || decoded.Env[authTokenEnv] != secret || decoded.Env[opusEnv] != "exact-opus" || decoded.Env[sonnetEnv] != "exact-sonnet" {
 		t.Fatalf("persisted env = %#v", decoded.Env)
 	}
@@ -290,24 +308,40 @@ func TestPersistentSlotsRestoreSettingsByteForByte(t *testing.T) {
 	}
 	if runtime.GOOS != "windows" {
 		info, err := os.Stat(settings)
-		if err != nil { t.Fatal(err) }
-		if info.Mode().Perm() != 0o600 { t.Fatalf("settings mode = %o, want 600", info.Mode().Perm()) }
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("settings mode = %o, want 600", info.Mode().Perm())
+		}
 	}
 	backups, err := filepath.Glob(settings + ".pmux.*.bak")
-	if err != nil || len(backups) != 1 { t.Fatalf("backups = %#v, err = %v", backups, err) }
+	if err != nil || len(backups) != 1 {
+		t.Fatalf("backups = %#v, err = %v", backups, err)
+	}
 	backup, err := os.ReadFile(backups[0])
-	if err != nil { t.Fatal(err) }
-	if !bytes.Equal(backup, original) { t.Fatal("backup is not byte-identical to original") }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(backup, original) {
+		t.Fatal("backup is not byte-identical to original")
+	}
 	if err := launcher.Unpersist(context.Background()); err != nil {
 		t.Fatalf("Unpersist error: %v", err)
 	}
 	restored, err := os.ReadFile(settings)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(restored, original) {
 		t.Fatalf("restored settings differ\n got: %q\nwant: %q", restored, original)
 	}
-	if _, err := os.Stat(state); !errors.Is(err, os.ErrNotExist) { t.Fatalf("state remains: %v", err) }
-	if _, err := os.Stat(backups[0]); !errors.Is(err, os.ErrNotExist) { t.Fatalf("backup remains: %v", err) }
+	if _, err := os.Stat(state); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("state remains: %v", err)
+	}
+	if _, err := os.Stat(backups[0]); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("backup remains: %v", err)
+	}
 }
 
 func TestPersistentSlotUpsertRetainsOriginalBackupAndOtherSlots(t *testing.T) {
@@ -336,7 +370,7 @@ func TestPersistentSlotUpsertRetainsOriginalBackupAndOtherSlots(t *testing.T) {
 	second, err := launcher.PlanPersist(context.Background(), domainclient.PersistSpec{
 		BaseURL: "http://127.0.0.1:8317", Token: "sk-123456789012",
 		Slots: domainclient.PersistentSlots{
-			Opus: domainclient.SlotUpdate{Action: domainclient.SlotUnmanaged},
+			Opus:   domainclient.SlotUpdate{Action: domainclient.SlotUnmanaged},
 			Sonnet: domainclient.SlotUpdate{Action: domainclient.SlotSet, Model: "sonnet-live"},
 		},
 	})
@@ -346,7 +380,9 @@ func TestPersistentSlotUpsertRetainsOriginalBackupAndOtherSlots(t *testing.T) {
 	if err := launcher.Upsert(context.Background(), second); err != nil {
 		t.Fatal(err)
 	}
-	var settingsValue struct{ Env map[string]string `json:"env"` }
+	var settingsValue struct {
+		Env map[string]string `json:"env"`
+	}
 	body, err := os.ReadFile(settings)
 	if err != nil {
 		t.Fatal(err)
@@ -375,28 +411,42 @@ func TestUnpersistRefusesConcurrentSettingsChange(t *testing.T) {
 	dir := t.TempDir()
 	settings := filepath.Join(dir, "settings.json")
 	original := []byte("{\"theme\":\"dark\"}\n")
-	if err := os.WriteFile(settings, original, 0o600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(settings, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	launcher := New(Options{SettingsPath: settings, PersistenceStatePath: filepath.Join(dir, "state.json")})
 	plan, err := launcher.PlanPersistent(context.Background(), PersistentSpec{BaseURL: "http://127.0.0.1:8317", Token: "sk-123456789012"})
-	if err != nil { t.Fatal(err) }
-	if err := launcher.Upsert(context.Background(), plan); err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := launcher.Upsert(context.Background(), plan); err != nil {
+		t.Fatal(err)
+	}
 	external := []byte("{\"user_changed\":true}\n")
-	if err := os.WriteFile(settings, external, 0o600); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(settings, external, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	err = launcher.Unpersist(context.Background())
 	var pmuxError *pmuxerr.Error
 	if !errors.As(err, &pmuxError) || pmuxError.Code != pmuxerr.ClientSettingsConflict {
 		t.Fatalf("Unpersist error = %#v, want %s", err, pmuxerr.ClientSettingsConflict)
 	}
 	got, readErr := os.ReadFile(settings)
-	if readErr != nil { t.Fatal(readErr) }
-	if !bytes.Equal(got, external) { t.Fatal("Unpersist overwrote concurrent user change") }
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if !bytes.Equal(got, external) {
+		t.Fatal("Unpersist overwrote concurrent user change")
+	}
 }
 
 func envMap(values []string) map[string]string {
 	result := make(map[string]string, len(values))
 	for _, value := range values {
 		parts := strings.SplitN(value, "=", 2)
-		if len(parts) == 2 { result[parts[0]] = parts[1] }
+		if len(parts) == 2 {
+			result[parts[0]] = parts[1]
+		}
 	}
 	return result
 }

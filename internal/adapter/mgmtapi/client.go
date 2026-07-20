@@ -24,14 +24,15 @@ const (
 	defaultTimeout     = 2 * time.Second
 	defaultMaxResponse = int64(4 << 20)
 )
+
 var credentialPattern = regexp.MustCompile(`(?i)(bearer\s+|sk-)[A-Za-z0-9._~+/=-]{8,}`)
 
 // Options configures the Management API adapter. BaseURL must identify the
 // local CLIProxyAPI origin, without a management path suffix.
 type Options struct {
 	BaseURL         string
-	ManagementKey  string
-	ProxyKey       string
+	ManagementKey   string
+	ProxyKey        string
 	HTTPClient      *http.Client
 	Timeout         time.Duration
 	MaxResponseSize int64
@@ -112,15 +113,15 @@ const (
 )
 
 type requestSpec struct {
-	method       string
-	url          string
-	query        url.Values
-	body         []byte
-	contentType  string
-	auth         authMode
-	management   bool
-	classify404  bool
-	responseMax  int64
+	method      string
+	url         string
+	query       url.Values
+	body        []byte
+	contentType string
+	auth        authMode
+	management  bool
+	classify404 bool
+	responseMax int64
 }
 
 func (c *Client) request(ctx context.Context, spec requestSpec) ([]byte, http.Header, int, error) {
@@ -165,7 +166,7 @@ func (c *Client) request(ctx context.Context, spec requestSpec) ([]byte, http.He
 		}
 		return nil, nil, 0, pmuxerr.Wrap(safeCause(err, "HTTP transport failed"), pmuxerr.ManagementUnreachable, pmuxerr.Environment, message)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	limit := spec.responseMax
 	if limit <= 0 || limit > c.maxResponse {
 		limit = c.maxResponse
@@ -200,17 +201,17 @@ func (c *Client) statusError(ctx context.Context, spec requestSpec, status int) 
 	if spec.management && status == http.StatusUnauthorized {
 		return &pmuxerr.Error{
 			Code: pmuxerr.ManagementAuthRejected, Class: pmuxerr.Upstream,
-			Message: "Management auth failed (HTTP 401). PMux will not retry — 5 failures trigger a 30-minute ban.",
+			Message:     "Management auth failed (HTTP 401). PMux will not retry — 5 failures trigger a 30-minute ban.",
 			Explanation: "The stored management key was rejected; PMux made exactly one authenticated attempt.",
-			Repair: []string{"Run `pmux doctor --fix management-key` to regenerate and re-sync the key."},
+			Repair:      []string{"Run `pmux doctor --fix management-key` to regenerate and re-sync the key."},
 		}
 	}
 	if spec.management && status == http.StatusForbidden {
 		return &pmuxerr.Error{
 			Code: pmuxerr.ManagementAuthRejected, Class: pmuxerr.Upstream,
-			Message: "Management access was refused (HTTP 403); the client address may be banned for 30 minutes.",
+			Message:     "Management access was refused (HTTP 403); the client address may be banned for 30 minutes.",
 			Explanation: "CLIProxyAPI bans an address after five failed management authentication attempts. PMux will not retry.",
-			Repair: []string{"Wait for the 30-minute ban window, then run `pmux doctor --fix management-key`."},
+			Repair:      []string{"Wait for the 30-minute ban window, then run `pmux doctor --fix management-key`."},
 		}
 	}
 	if spec.management && status == http.StatusNotFound {

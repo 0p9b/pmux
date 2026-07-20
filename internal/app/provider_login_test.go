@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"reflect"
@@ -85,6 +84,7 @@ func (fake *providerFlowFake) Cancel(context.Context, provider.AuthSession) erro
 	fake.canceled++
 	return nil
 }
+
 type providerVerifyManagement struct {
 	management.ManagementClient
 	files   []management.AuthFile
@@ -107,7 +107,7 @@ func (fake *providerVerifyManagement) DeleteAuthFiles(_ context.Context, names [
 }
 
 type providerVerifyCatalog struct {
-	entries []domainmodel.CatalogEntry
+	entries   []domainmodel.CatalogEntry
 	refreshes int
 }
 
@@ -121,7 +121,6 @@ func (fake *providerVerifyCatalog) Refresh(context.Context) ([]domainmodel.Catal
 func (fake *providerVerifyCatalog) Attribution(context.Context) (map[string][]management.ProviderID, error) {
 	return map[string][]management.ProviderID{}, nil
 }
-
 
 func providerRouter(t *testing.T, fake *providerFlowFake, input string) *Router {
 	t.Helper()
@@ -182,7 +181,7 @@ func TestProviderLoginAppliesProtectedAPIKeyFromStdinAndFile(t *testing.T) {
 			if fake.apiKey != canary {
 				t.Fatalf("protected input was not delivered: %q", fake.apiKey)
 			}
-			encoded, _ := json.Marshal(result)
+			encoded := toJSON(result.Data)
 			if strings.Contains(string(encoded), canary) {
 				t.Fatalf("result disclosed API key: %s", encoded)
 			}
@@ -194,7 +193,7 @@ func TestProviderLoginPreservesSelectedCompatibilityFields(t *testing.T) {
 	fake := &providerFlowFake{flows: []provider.AuthFlow{provider.FlowAPIKey}}
 	fields := map[string]string{"base-url": "https://gateway.example/v1", "model-prefix": "team"}
 	options := map[string]any{
-		"api_key_stdin":    true,
+		"api_key_stdin":     true,
 		"provider_entry_id": "custom-team",
 		"provider_label":    "Team gateway",
 		"provider_fields":   fields,
@@ -217,18 +216,17 @@ func TestProviderLoginPreservesSelectedCompatibilityFields(t *testing.T) {
 	if fake.application.Fields["base-url"] != "https://gateway.example/v1" {
 		t.Fatal("router retained the caller's mutable provider fields map")
 	}
-	encoded, _ := json.Marshal(result)
+	encoded := toJSON(result.Data)
 	if strings.Contains(string(encoded), canary) {
 		t.Fatalf("result disclosed API key: %s", encoded)
 	}
 }
 
-
 func TestProviderLoginUsesEphemeralProtectedInputOverride(t *testing.T) {
 	const canary = "sk-provider-tui-canary-1234567890"
 	fake := &providerFlowFake{flows: []provider.AuthFlow{provider.FlowAPIKey}}
 	options := map[string]any{
-		"api_key_stdin":  true,
+		"api_key_stdin":   true,
 		"protected_input": strings.NewReader(canary + "\n"),
 	}
 	result, err := providerRouter(t, fake, "wrong-shared-stdin\n").Execute(
@@ -242,7 +240,7 @@ func TestProviderLoginUsesEphemeralProtectedInputOverride(t *testing.T) {
 	if fake.apiKey != canary {
 		t.Fatalf("ephemeral protected input was not delivered: %q", fake.apiKey)
 	}
-	encoded, _ := json.Marshal(result)
+	encoded := toJSON(result.Data)
 	if strings.Contains(string(encoded), canary) {
 		t.Fatalf("result disclosed protected input: %s", encoded)
 	}
@@ -290,10 +288,7 @@ func TestProviderLoginCompletesProtectedPastedCallback(t *testing.T) {
 	if fake.beginFlow != provider.FlowPasteCallback || fake.paste != callback || fake.polls != 0 {
 		t.Fatalf("paste dispatch: begin=%q paste=%q polls=%d", fake.beginFlow, fake.paste, fake.polls)
 	}
-	encoded, _ := json.Marshal(struct {
-		Result Result
-		Events []Event
-	}{result, events})
+	encoded := toJSON(map[string]any{"data": result.Data, "human": result.Human, "events": events})
 	if strings.Contains(string(encoded), callbackCanary) || strings.Contains(string(encoded), "oauth-state-must-not-render") {
 		t.Fatalf("callback secret or OAuth state leaked: %s", encoded)
 	}
@@ -313,7 +308,7 @@ func TestProviderLoginDispatchesBrowserAndDeviceFlows(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := &providerFlowFake{
-				flows: []provider.AuthFlow{provider.FlowBrowser, provider.FlowDeviceCode},
+				flows:        []provider.AuthFlow{provider.FlowBrowser, provider.FlowDeviceCode},
 				pollStatuses: []management.OAuthStatus{{Status: "pending"}, {Status: "complete"}},
 			}
 			var events []Event
@@ -347,7 +342,7 @@ func TestProviderLoginAutoAPIKeyUsesProtectedTTYWithoutOAuthBegin(t *testing.T) 
 	if fake.beginFlow != "" || fake.apiKey != canary {
 		t.Fatalf("auto API-key route used OAuth or wrong protected input: begin=%q key=%q", fake.beginFlow, fake.apiKey)
 	}
-	encoded, _ := json.Marshal(result)
+	encoded := toJSON(result.Data)
 	if strings.Contains(string(encoded), canary) {
 		t.Fatalf("interactive API key leaked in result: %s", encoded)
 	}
@@ -374,10 +369,7 @@ func TestProviderLoginInteractiveCallbackPromptsAfterChallenge(t *testing.T) {
 	if len(events) < 4 || events[1].Type != "verification_required" || events[2].Type != "protected_input_required" {
 		t.Fatalf("callback progress events = %#v", events)
 	}
-	encoded, _ := json.Marshal(struct {
-		Result Result
-		Events []Event
-	}{result, events})
+	encoded := toJSON(map[string]any{"data": result.Data, "human": result.Human, "events": events})
 	if strings.Contains(string(encoded), callbackCanary) || strings.Contains(string(encoded), "oauth-state-must-not-render") {
 		t.Fatalf("interactive callback secret or OAuth state leaked: %s", encoded)
 	}
@@ -506,13 +498,13 @@ func TestProvidersVerifyEnforcesUsableAccountsAndRefreshesModels(t *testing.T) {
 
 func TestProviderMutationsRequireScopeSpecificInteractivePhrases(t *testing.T) {
 	for _, test := range []struct {
-		name      string
-		operation Operation
-		arguments []string
-		input     string
-		wantPatch int
+		name       string
+		operation  Operation
+		arguments  []string
+		input      string
+		wantPatch  int
 		wantDelete int
-		wantError bool
+		wantError  bool
 	}{
 		{name: "disable rejected", operation: OpProvidersDisable, arguments: []string{"codex"}, input: "wrong\n", wantError: true},
 		{name: "disable confirmed", operation: OpProvidersDisable, arguments: []string{"codex"}, input: "disable\n", wantPatch: 1},
@@ -534,8 +526,8 @@ func TestProviderMutationsRequireScopeSpecificInteractivePhrases(t *testing.T) {
 				t.Fatal(err)
 			}
 			_, err = router.Execute(context.Background(), Invocation{
-				Operation: test.operation,
-				Arguments: test.arguments,
+				Operation:   test.operation,
+				Arguments:   test.arguments,
 				Interactive: true,
 			}, nil)
 			if (err != nil) != test.wantError {

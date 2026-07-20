@@ -14,42 +14,42 @@ import (
 type Operation string
 
 const (
-	OpDashboardStatus Operation = "dashboard.status"
-	OpTUIDashboard Operation = "tui.dashboard"
-	OpSetup Operation = "setup"
-	OpProvidersList Operation = "providers.list"
-	OpProvidersLogin Operation = "providers.login"
-	OpProvidersVerify Operation = "providers.verify"
-	OpProvidersEnable Operation = "providers.enable"
+	OpDashboardStatus  Operation = "dashboard.status"
+	OpTUIDashboard     Operation = "tui.dashboard"
+	OpSetup            Operation = "setup"
+	OpProvidersList    Operation = "providers.list"
+	OpProvidersLogin   Operation = "providers.login"
+	OpProvidersVerify  Operation = "providers.verify"
+	OpProvidersEnable  Operation = "providers.enable"
 	OpProvidersDisable Operation = "providers.disable"
-	OpProvidersRemove Operation = "providers.remove"
-	OpTUIProviders Operation = "tui.providers"
-	OpModelsList Operation = "models.list"
-	OpModelsTest Operation = "models.test"
-	OpModelsFavorite Operation = "models.favorite"
+	OpProvidersRemove  Operation = "providers.remove"
+	OpTUIProviders     Operation = "tui.providers"
+	OpModelsList       Operation = "models.list"
+	OpModelsTest       Operation = "models.test"
+	OpModelsFavorite   Operation = "models.favorite"
 	OpModelsUnfavorite Operation = "models.unfavorite"
-	OpTUIModels Operation = "tui.models"
-	OpLaunch Operation = "launch"
-	OpLaunchPreflight Operation = "launch.preflight"
-	OpDoctor Operation = "doctor"
-	OpServiceStatus Operation = "service.status"
-	OpServiceStart Operation = "service.start"
-	OpServiceStop Operation = "service.stop"
-	OpServiceRestart Operation = "service.restart"
-	OpServiceInstall Operation = "service.install"
+	OpTUIModels        Operation = "tui.models"
+	OpLaunch           Operation = "launch"
+	OpLaunchPreflight  Operation = "launch.preflight"
+	OpDoctor           Operation = "doctor"
+	OpServiceStatus    Operation = "service.status"
+	OpServiceStart     Operation = "service.start"
+	OpServiceStop      Operation = "service.stop"
+	OpServiceRestart   Operation = "service.restart"
+	OpServiceInstall   Operation = "service.install"
 	OpServiceUninstall Operation = "service.uninstall"
-	OpServiceLogs Operation = "service.logs"
-	OpTUIService Operation = "tui.service"
-	OpConfigShow Operation = "config.show"
-	OpConfigGet Operation = "config.get"
-	OpConfigSet Operation = "config.set"
-	OpConfigEdit Operation = "config.edit"
-	OpConfigBackup Operation = "config.backup"
-	OpConfigRestore Operation = "config.restore"
-	OpTUIConfig Operation = "tui.config"
-	OpUpdateCheck Operation = "update.check"
-	OpUpdateSelf Operation = "update.self"
-	OpUpdateProxy Operation = "update.proxy"
+	OpServiceLogs      Operation = "service.logs"
+	OpTUIService       Operation = "tui.service"
+	OpConfigShow       Operation = "config.show"
+	OpConfigGet        Operation = "config.get"
+	OpConfigSet        Operation = "config.set"
+	OpConfigEdit       Operation = "config.edit"
+	OpConfigBackup     Operation = "config.backup"
+	OpConfigRestore    Operation = "config.restore"
+	OpTUIConfig        Operation = "tui.config"
+	OpUpdateCheck      Operation = "update.check"
+	OpUpdateSelf       Operation = "update.self"
+	OpUpdateProxy      Operation = "update.proxy"
 )
 
 type Invocation struct {
@@ -81,11 +81,11 @@ type Result struct {
 // following. Terminal events are still followed by the finite Result returned
 // from Execute.
 type Event struct {
-	Type      string    `json:"type"`
+	Type       string    `json:"type"`
 	InstanceID string    `json:"instance_id,omitempty"`
-	Timestamp time.Time `json:"timestamp,omitempty"`
-	Data      any       `json:"data,omitempty"`
-	Human     string    `json:"-"`
+	Timestamp  time.Time `json:"timestamp,omitempty"`
+	Data       any       `json:"data,omitempty"`
+	Human      string    `json:"-"`
 }
 
 // EventSink receives streaming events in call order.

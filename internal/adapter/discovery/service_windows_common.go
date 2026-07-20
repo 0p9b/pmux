@@ -29,8 +29,8 @@ const (
 // Task Scheduler 2.0 COM source. Executable and Arguments remain separate;
 // Arguments is parsed as a Windows command line without invoking a shell.
 type ScheduledExecAction struct {
-	Executable      string
-	Arguments       string
+	Executable       string
+	Arguments        string
 	WorkingDirectory string
 }
 
@@ -165,7 +165,6 @@ func isWindowsAbsolutePath(path string) bool {
 		((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
 		path[1] == ':' && (path[2] == '\\' || path[2] == '/')
 }
-
 
 // parseWindowsCommandLine implements the CommandLineToArgvW backslash/quote
 // rules for an ExecAction Arguments field. It does not expand variables,

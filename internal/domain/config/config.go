@@ -37,7 +37,11 @@ type PatchResult struct {
 	RestartRequired bool
 }
 
-type Diagnostic struct { ID string `json:"id"`; Severity string `json:"severity"`; Message string `json:"message"` }
+type Diagnostic struct {
+	ID       string `json:"id"`
+	Severity string `json:"severity"`
+	Message  string `json:"message"`
+}
 
 type ConfigFile interface {
 	Read(context.Context, string) (ConfigSnapshot, error)

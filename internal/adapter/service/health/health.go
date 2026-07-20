@@ -160,7 +160,7 @@ func (p HTTPProbe) Probe(ctx context.Context) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 	if resp.StatusCode != http.StatusOK {
 		return Result{}, fmt.Errorf("health endpoint returned HTTP %d", resp.StatusCode)

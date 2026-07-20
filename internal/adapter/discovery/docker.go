@@ -28,23 +28,22 @@ func (e unavailableContainerEnumerator) Containers(context.Context) ([]Container
 	return nil, pmuxerr.Wrap(e.cause, pmuxerr.ServiceBackendUnavailable, pmuxerr.Environment, "Docker endpoint exists but cannot be inspected")
 }
 
-
 type dockerContainer struct {
-	ID     string `json:"Id"`
+	ID     string   `json:"Id"`
 	Names  []string `json:"Names"`
-	Image  string `json:"Image"`
-	State  string `json:"State"`
+	Image  string   `json:"Image"`
+	State  string   `json:"State"`
 	Mounts []struct {
-		Source string `json:"Source"`
+		Source      string `json:"Source"`
 		Destination string `json:"Destination"`
-		Mode string `json:"Mode"`
-		RW bool `json:"RW"`
+		Mode        string `json:"Mode"`
+		RW          bool   `json:"RW"`
 	} `json:"Mounts"`
 	Ports []struct {
-		IP string `json:"IP"`
-		PrivatePort int `json:"PrivatePort"`
-		PublicPort int `json:"PublicPort"`
-		Type string `json:"Type"`
+		IP          string `json:"IP"`
+		PrivatePort int    `json:"PrivatePort"`
+		PublicPort  int    `json:"PublicPort"`
+		Type        string `json:"Type"`
 	} `json:"Ports"`
 }
 
@@ -71,7 +70,7 @@ func (e DockerSocketEnumerator) Containers(ctx context.Context) ([]ContainerEvid
 		}
 		return nil, pmuxerr.Wrap(err, pmuxerr.ServiceBackendUnavailable, pmuxerr.Environment, "Docker is unavailable for read-only discovery")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
 		return nil, pmuxerr.New(pmuxerr.ServiceBackendUnavailable, pmuxerr.Environment, "Docker rejected the read-only container inventory request")
@@ -115,9 +114,13 @@ func dockerPort(ip string, public, private int, protocol string) string {
 }
 
 func itoa(value int) string {
-	if value == 0 { return "0" }
+	if value == 0 {
+		return "0"
+	}
 	negative := value < 0
-	if negative { value = -value }
+	if negative {
+		value = -value
+	}
 	buffer := [20]byte{}
 	index := len(buffer)
 	for value > 0 {
@@ -125,7 +128,10 @@ func itoa(value int) string {
 		buffer[index] = byte('0' + value%10)
 		value /= 10
 	}
-	if negative { index--; buffer[index] = '-' }
+	if negative {
+		index--
+		buffer[index] = '-'
+	}
 	return string(buffer[index:])
 }
 
@@ -137,13 +143,21 @@ type DockerServiceManager struct {
 }
 
 func (DockerServiceManager) Backend() service.ServiceBackend { return service.BackendDockerUnmanaged }
-func (m DockerServiceManager) Detect(ctx context.Context) (service.ServiceStatus, error) { return m.status(ctx), nil }
-func (m DockerServiceManager) Status(ctx context.Context) (service.ServiceStatus, error) { return m.status(ctx), nil }
-func (DockerServiceManager) Install(context.Context, service.ServiceSpec) error { return dockerMutationError() }
-func (DockerServiceManager) Uninstall(context.Context) error { return dockerMutationError() }
-func (DockerServiceManager) Start(context.Context) error { return dockerMutationError() }
+func (m DockerServiceManager) Detect(ctx context.Context) (service.ServiceStatus, error) {
+	return m.status(ctx), nil
+}
+func (m DockerServiceManager) Status(ctx context.Context) (service.ServiceStatus, error) {
+	return m.status(ctx), nil
+}
+func (DockerServiceManager) Install(context.Context, service.ServiceSpec) error {
+	return dockerMutationError()
+}
+func (DockerServiceManager) Uninstall(context.Context) error           { return dockerMutationError() }
+func (DockerServiceManager) Start(context.Context) error               { return dockerMutationError() }
 func (DockerServiceManager) Stop(context.Context, time.Duration) error { return dockerMutationError() }
-func (DockerServiceManager) Restart(context.Context) (service.ServiceStatus, error) { return service.ServiceStatus{}, dockerMutationError() }
+func (DockerServiceManager) Restart(context.Context) (service.ServiceStatus, error) {
+	return service.ServiceStatus{}, dockerMutationError()
+}
 func (DockerServiceManager) Logs(context.Context, int, bool) (io.ReadCloser, error) {
 	return nil, pmuxerr.New(pmuxerr.ServiceBackendUnavailable, pmuxerr.Upstream, "Docker logs are available only through the detected Management API; container runtime logs remain externally managed")
 }
@@ -154,11 +168,11 @@ func (m DockerServiceManager) status(ctx context.Context) service.ServiceStatus 
 		state = service.ServiceRunning
 	}
 	status := service.ServiceStatus{
-		Backend: service.BackendDockerUnmanaged,
-		State: state,
-		Detail: "Docker lifecycle is externally managed",
+		Backend:     service.BackendDockerUnmanaged,
+		State:       state,
+		Detail:      "Docker lifecycle is externally managed",
 		CoreVersion: m.Container.CoreVersion,
-		Healthy: m.Container.Healthy,
+		Healthy:     m.Container.Healthy,
 	}
 	if status.CoreVersion == "" {
 		status.CoreVersion = "unknown"

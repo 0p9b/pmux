@@ -410,10 +410,10 @@ func validateSpec(spec service.ServiceSpec) error {
 	for _, item := range paths {
 		if !isAbsolutePath(item.path) {
 			return &pmuxerr.Error{
-				Code:        pmuxerr.ConfigPathMismatch,
-				Class:       pmuxerr.User,
-				Message:     item.name + " path must be absolute.",
-				Evidence:    []string{"path: " + item.path},
+				Code:     pmuxerr.ConfigPathMismatch,
+				Class:    pmuxerr.User,
+				Message:  item.name + " path must be absolute.",
+				Evidence: []string{"path: " + item.path},
 			}
 		}
 	}

@@ -48,13 +48,19 @@ func main() {
 
 func findModuleRoot() (string, error) {
 	directory, err := os.Getwd()
-	if err != nil { return "", fmt.Errorf("read working directory: %w", err) }
+	if err != nil {
+		return "", fmt.Errorf("read working directory: %w", err)
+	}
 	for {
 		moduleFile := filepath.Join(directory, "go.mod")
 		body, readErr := os.ReadFile(moduleFile)
-		if readErr == nil && bytes.Contains(body, []byte("module github.com/0p9b/pmux")) { return directory, nil }
+		if readErr == nil && bytes.Contains(body, []byte("module github.com/0p9b/pmux")) {
+			return directory, nil
+		}
 		parent := filepath.Dir(directory)
-		if parent == directory { return "", fmt.Errorf("could not find github.com/0p9b/pmux module root from %s", directory) }
+		if parent == directory {
+			return "", fmt.Errorf("could not find github.com/0p9b/pmux module root from %s", directory)
+		}
 		directory = parent
 	}
 }

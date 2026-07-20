@@ -8,8 +8,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/0p9b/pmux/cmd/pmux/internaldocs"
+	"github.com/spf13/cobra"
 )
 
 func TestGeneratedCommandDocsHaveNoDrift(t *testing.T) {
@@ -47,23 +47,37 @@ func readGeneratedTree(t *testing.T, root string) map[string][]byte {
 	t.Helper()
 	files := make(map[string][]byte)
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil { return walkErr }
-		if entry.IsDir() { return nil }
-		if !entry.Type().IsRegular() { t.Fatalf("generated documentation contains non-regular file: %s", path) }
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if !entry.Type().IsRegular() {
+			t.Fatalf("generated documentation contains non-regular file: %s", path)
+		}
 		relative, err := filepath.Rel(root, path)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		body, err := os.ReadFile(path)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		files[filepath.ToSlash(relative)] = body
 		return nil
 	})
-	if err != nil { t.Fatalf("read generated documentation tree %s: %v", root, err) }
+	if err != nil {
+		t.Fatalf("read generated documentation tree %s: %v", root, err)
+	}
 	return files
 }
 
 func sortedPaths(files map[string][]byte) []string {
 	paths := make([]string, 0, len(files))
-	for path := range files { paths = append(paths, path) }
+	for path := range files {
+		paths = append(paths, path)
+	}
 	sort.Strings(paths)
 	return paths
 }
@@ -71,13 +85,17 @@ func sortedPaths(files map[string][]byte) []string {
 func testModuleRoot(t *testing.T) string {
 	t.Helper()
 	directory, err := os.Getwd()
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	for {
 		if body, readErr := os.ReadFile(filepath.Join(directory, "go.mod")); readErr == nil && bytes.Contains(body, []byte("module github.com/0p9b/pmux")) {
 			return directory
 		}
 		parent := filepath.Dir(directory)
-		if parent == directory { t.Fatalf("could not find PMux module root from %s", directory) }
+		if parent == directory {
+			t.Fatalf("could not find PMux module root from %s", directory)
+		}
 		directory = parent
 	}
 }

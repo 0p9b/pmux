@@ -47,9 +47,9 @@ func assertWSLRoots(t *testing.T, adapter *nativePlatform) {
 	}
 	actual := map[string]func() (string, error){
 		"config": adapter.ConfigDir,
-		"state": adapter.StateDir,
-		"cache": adapter.CacheDir,
-		"data": adapter.DataDir,
+		"state":  adapter.StateDir,
+		"cache":  adapter.CacheDir,
+		"data":   adapter.DataDir,
 	}
 	for name, resolve := range actual {
 		root, err := resolve()

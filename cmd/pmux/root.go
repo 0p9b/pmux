@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"io"
-	"path/filepath"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/0p9b/pmux/internal/app"
@@ -15,18 +15,18 @@ import (
 )
 
 type dependencies struct {
-	UseCases  app.UseCases
-	RunTUI    func(context.Context, dependencies, *globalFlags, tuiRequest) error
+	UseCases    app.UseCases
+	RunTUI      func(context.Context, dependencies, *globalFlags, tuiRequest) error
 	RunSetupTUI func(context.Context, dependencies, *globalFlags, setupTUIOptions) error
-	In        io.Reader
-	Out       io.Writer
-	Err       io.Writer
-	IsTerminal func() bool
-	Version   func() version.Info
-	GOOS      string
-	GOARCH    string
-	Getenv    func(string) string
-	UserHome  func() (string, error)
+	In          io.Reader
+	Out         io.Writer
+	Err         io.Writer
+	IsTerminal  func() bool
+	Version     func() version.Info
+	GOOS        string
+	GOARCH      string
+	Getenv      func(string) string
+	UserHome    func() (string, error)
 }
 
 type globalFlags struct {

@@ -20,11 +20,11 @@ const (
 )
 
 type FileEvidence struct {
-	Path    string      `json:"path"`
-	Mode    uint32      `json:"mode"`
-	Size    int64       `json:"size"`
-	ModTime time.Time   `json:"mod_time"`
-	SHA256  string      `json:"sha256,omitempty"`
+	Path    string    `json:"path"`
+	Mode    uint32    `json:"mode"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time"`
+	SHA256  string    `json:"sha256,omitempty"`
 }
 
 type ProcessEvidence struct {
@@ -36,15 +36,15 @@ type ProcessEvidence struct {
 }
 
 type ServiceEvidence struct {
-	Backend     service.ServiceBackend `json:"backend"`
-	Identity    string                 `json:"identity"`
-	State        service.ServiceState   `json:"state,omitempty"`
-	Definition  string                 `json:"definition,omitempty"`
-	Executable  string                 `json:"executable,omitempty"`
-	Argv        []string               `json:"argv,omitempty"`
-	WorkingDir  string                 `json:"working_dir,omitempty"`
-	ConfigPath  string                 `json:"config_path,omitempty"`
-	PMuxOwned   bool                   `json:"pmux_owned"`
+	Backend    service.ServiceBackend `json:"backend"`
+	Identity   string                 `json:"identity"`
+	State      service.ServiceState   `json:"state,omitempty"`
+	Definition string                 `json:"definition,omitempty"`
+	Executable string                 `json:"executable,omitempty"`
+	Argv       []string               `json:"argv,omitempty"`
+	WorkingDir string                 `json:"working_dir,omitempty"`
+	ConfigPath string                 `json:"config_path,omitempty"`
+	PMuxOwned  bool                   `json:"pmux_owned"`
 }
 
 type PortEvidence struct {
@@ -65,7 +65,6 @@ type PublishedPortEvidence struct {
 	ContainerPort int    `json:"container_port"`
 	Protocol      string `json:"protocol"`
 }
-
 
 type ContainerEvidence struct {
 	ID             string                  `json:"id"`

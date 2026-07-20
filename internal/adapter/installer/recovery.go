@@ -2,7 +2,6 @@ package installer
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -24,15 +23,15 @@ const (
 type recoveryStage string
 
 const (
-	stagePlanned          recoveryStage = "planned"
-	stageDownloading      recoveryStage = "downloading"
-	stageDownloaded       recoveryStage = "downloaded"
-	stageChecksumVerified recoveryStage = "checksum_verified"
-	stageExtracting       recoveryStage = "extracting"
-	stageExtracted        recoveryStage = "extracted"
-	stageInstalling       recoveryStage = "installing"
-	stageActivated        recoveryStage = "activated"
-	stageConfigCheckpoint recoveryStage = "config_checkpointed"
+	stagePlanned           recoveryStage = "planned"
+	stageDownloading       recoveryStage = "downloading"
+	stageDownloaded        recoveryStage = "downloaded"
+	stageChecksumVerified  recoveryStage = "checksum_verified"
+	stageExtracting        recoveryStage = "extracting"
+	stageExtracted         recoveryStage = "extracted"
+	stageInstalling        recoveryStage = "installing"
+	stageActivated         recoveryStage = "activated"
+	stageConfigCheckpoint  recoveryStage = "config_checkpointed"
 	stageServiceCheckpoint recoveryStage = "service_checkpointed"
 )
 
@@ -387,14 +386,4 @@ func removeManagedPath(root, candidate string, directory bool) error {
 
 func digestHex(digest [32]byte) string {
 	return hex.EncodeToString(digest[:])
-}
-
-func parseDigest(value string) ([32]byte, error) {
-	var digest [32]byte
-	bytes, err := hex.DecodeString(value)
-	if err != nil || len(bytes) != sha256.Size {
-		return digest, errors.New("invalid SHA-256 in recovery state")
-	}
-	copy(digest[:], bytes)
-	return digest, nil
 }

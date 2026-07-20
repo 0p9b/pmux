@@ -23,8 +23,8 @@ import (
 )
 
 type hardeningService struct {
-	installed service.ServiceSpec
-	restarts int
+	installed  service.ServiceSpec
+	restarts   int
 	restartErr error
 }
 
@@ -36,8 +36,8 @@ func (s *hardeningService) Install(_ context.Context, spec service.ServiceSpec) 
 	s.installed = spec
 	return nil
 }
-func (*hardeningService) Uninstall(context.Context) error { return nil }
-func (*hardeningService) Start(context.Context) error { return nil }
+func (*hardeningService) Uninstall(context.Context) error           { return nil }
+func (*hardeningService) Start(context.Context) error               { return nil }
 func (*hardeningService) Stop(context.Context, time.Duration) error { return nil }
 func (s *hardeningService) Restart(context.Context) (service.ServiceStatus, error) {
 	s.restarts++
@@ -103,7 +103,9 @@ func TestAdoptHardeningCreatesPrivateManagementReference(t *testing.T) {
 		t.Fatal(err)
 	}
 	fakeService := &hardeningService{}
-	native := &nativeRuntime{platform: platform, roots: roots, store: store, http: server.Client(), serviceFactory: func(context.Context, state.Installation, bool) (service.ServiceManager, error) { return fakeService, nil }}
+	native := &nativeRuntime{platform: platform, roots: roots, store: store, http: server.Client(), serviceFactory: func(context.Context, state.Installation, bool) (service.ServiceManager, error) {
+		return fakeService, nil
+	}}
 	out, err := native.adopt(context.Background(), app.SetupRequest{Mode: "adopt", ProxyPath: binary, ConfigPath: configPath, Harden: true, Yes: true})
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +174,9 @@ func TestAdoptHardeningRollbackRestoresConfigAndAdoptionRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	fakeService := &hardeningService{restartErr: errors.New("injected restart failure")}
-	native := &nativeRuntime{platform: platform, roots: roots, store: store, serviceFactory: func(context.Context, state.Installation, bool) (service.ServiceManager, error) { return fakeService, nil }}
+	native := &nativeRuntime{platform: platform, roots: roots, store: store, serviceFactory: func(context.Context, state.Installation, bool) (service.ServiceManager, error) {
+		return fakeService, nil
+	}}
 	if _, err := native.adopt(context.Background(), app.SetupRequest{Mode: "adopt", ProxyPath: binary, ConfigPath: configPath, Harden: true, Yes: true}); err == nil {
 		t.Fatal("hardening unexpectedly succeeded")
 	}

@@ -12,8 +12,8 @@ import (
 func TestStoreAtomicRoundTripAndPrivatePermissions(t *testing.T) {
 	root := t.TempDir()
 	store, err := New(Paths{
-		Config: filepath.Join(root, "config", "config.json"),
-		State: filepath.Join(root, "state", "state.json"),
+		Config:  filepath.Join(root, "config", "config.json"),
+		State:   filepath.Join(root, "state", "state.json"),
 		Secrets: filepath.Join(root, "state", "secrets.json"),
 	})
 	if err != nil {

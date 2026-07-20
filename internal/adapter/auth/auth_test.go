@@ -53,26 +53,26 @@ func (clock *fakeClock) advance(duration time.Duration) {
 type fakeManagement struct {
 	management.ManagementClient
 
-	challenge      management.OAuthChallenge
-	beginErr       error
-	beginProvider  management.ProviderID
-	beginWebUI     bool
-	status         management.OAuthStatus
-	statusErr      error
-	statusCalls    int
-	callback       string
-	callbackErr    error
-	cancelStates   []string
-	authResponses  [][]management.AuthFile
-	authCalls      int
-	providerKeys   []management.ProviderKey
-	providerKeyErr error
-	putKind        management.ProviderKeyKind
-	putValues      []management.ProviderKey
-	putErr         error
-	importRequest  management.VertexImportRequest
-	importResult   management.VertexImportResult
-	importErr      error
+	challenge            management.OAuthChallenge
+	beginErr             error
+	beginProvider        management.ProviderID
+	beginWebUI           bool
+	status               management.OAuthStatus
+	statusErr            error
+	statusCalls          int
+	callback             string
+	callbackErr          error
+	cancelStates         []string
+	authResponses        [][]management.AuthFile
+	authCalls            int
+	providerKeys         []management.ProviderKey
+	providerKeyErr       error
+	putKind              management.ProviderKeyKind
+	putValues            []management.ProviderKey
+	putErr               error
+	importRequest        management.VertexImportRequest
+	importResult         management.VertexImportResult
+	importErr            error
 	providerKeyResponses [][]management.ProviderKey
 	providerKeyErrors    []error
 	providerKeyCalls     int
@@ -136,7 +136,6 @@ func (fake *fakeManagement) ProviderKeys(_ context.Context, _ management.Provide
 	return cloneFakeProviderKeys(fake.providerKeys), nil
 }
 
-
 func (fake *fakeManagement) CreateProviderKey(ctx context.Context, kind management.ProviderKeyKind, value management.ProviderKey) (management.ProviderKey, error) {
 	fake.putKind = kind
 	if fake.putErr != nil {
@@ -186,7 +185,6 @@ func (fake *fakeManagement) DeleteProviderKey(_ context.Context, _ management.Pr
 	fake.putValues = filtered
 	return nil
 }
-
 
 func (fake *fakeManagement) ImportVertex(_ context.Context, request management.VertexImportRequest) (management.VertexImportResult, error) {
 	fake.importRequest = request

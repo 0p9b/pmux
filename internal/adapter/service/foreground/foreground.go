@@ -3,9 +3,9 @@ package foreground
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
@@ -30,7 +30,6 @@ var (
 )
 var inspectProcessOwned = processOwned
 var stopRecordedProcess = stopExternal
-
 
 var allowedEnvironment = map[string]struct{}{
 	"PATH": {}, "HOME": {}, "USER": {}, "LOGNAME": {}, "TMPDIR": {},
@@ -79,28 +78,28 @@ func (OSRunner) Start(_ context.Context, command Command) (Process, error) {
 
 type osProcess struct{ cmd *exec.Cmd }
 
-func (p osProcess) PID() int                         { return p.cmd.Process.Pid }
-func (p osProcess) Signal(signal os.Signal) error    { return signalProcess(p.cmd.Process, signal) }
-func (p osProcess) Kill() error                      { return killProcess(p.cmd.Process) }
-func (p osProcess) Wait() error                      { return p.cmd.Wait() }
+func (p osProcess) PID() int                      { return p.cmd.Process.Pid }
+func (p osProcess) Signal(signal os.Signal) error { return signalProcess(p.cmd.Process, signal) }
+func (p osProcess) Kill() error                   { return killProcess(p.cmd.Process) }
+func (p osProcess) Wait() error                   { return p.cmd.Wait() }
 
 // Manager implements service.ServiceManager for an attached foreground process.
 type Manager struct {
-	mu      sync.Mutex
-	runner  Runner
-	health  health.Checker
-	spec    service.ServiceSpec
-	owned   bool
-	process Process
-	done    chan error
-	since   time.Time
-	state   service.ServiceState
-	result  health.Result
-	logs    *logBuffer
-	pidPath string
-	externalPID int
+	mu            sync.Mutex
+	runner        Runner
+	health        health.Checker
+	spec          service.ServiceSpec
+	owned         bool
+	process       Process
+	done          chan error
+	since         time.Time
+	state         service.ServiceState
+	result        health.Result
+	logs          *logBuffer
+	pidPath       string
+	externalPID   int
 	externalSince time.Time
-	attached *Streams
+	attached      *Streams
 }
 
 var _ service.ServiceManager = (*Manager)(nil)
@@ -111,6 +110,7 @@ func New(runner Runner, checker health.Checker) *Manager {
 	}
 	return &Manager{runner: runner, health: checker, state: service.ServiceNotInstalled, logs: newLogBuffer(1000)}
 }
+
 // NewPersistent records and validates foreground process ownership across PMux
 // invocations. A stale or mismatched record is removed rather than trusted.
 func NewPersistent(runner Runner, checker health.Checker, pidPath string) *Manager {
@@ -118,6 +118,7 @@ func NewPersistent(runner Runner, checker health.Checker, pidPath string) *Manag
 	manager.pidPath = pidPath
 	return manager
 }
+
 // Streams are attached directly to CLIProxyAPI for `service start --foreground`.
 type Streams struct {
 	Stdin  io.Reader
@@ -132,7 +133,6 @@ func NewAttachedPersistent(runner Runner, checker health.Checker, pidPath string
 	manager.attached = &streams
 	return manager
 }
-
 
 func (m *Manager) Backend() service.ServiceBackend { return service.BackendForeground }
 
@@ -312,9 +312,9 @@ func (m *Manager) wait(process Process, done chan error, logs *logBuffer) {
 	err := process.Wait()
 	m.mu.Lock()
 	if m.process == process {
-	if stoppedByLifecycle(err) {
-		err = nil
-	}
+		if stoppedByLifecycle(err) {
+			err = nil
+		}
 		m.process = nil
 		if m.state == service.ServiceStopping || err == nil {
 			m.state = service.ServiceStopped
@@ -429,6 +429,7 @@ func (m *Manager) Status(_ context.Context) (service.ServiceStatus, error) {
 	}
 	return status, nil
 }
+
 type pidRecord struct {
 	PID        int       `json:"pid"`
 	Started    time.Time `json:"started"`
@@ -436,7 +437,7 @@ type pidRecord struct {
 	ConfigPath string    `json:"config_path"`
 	RuntimeDir string    `json:"runtime_dir"`
 	InstanceID string    `json:"instance_id"`
-	Argv        []string  `json:"argv"`
+	Argv       []string  `json:"argv"`
 }
 
 func (m *Manager) writePIDRecord(pid int, spec service.ServiceSpec) error {
@@ -522,7 +523,6 @@ func (m *Manager) removePIDRecord() error {
 	return nil
 }
 
-
 func (m *Manager) Logs(ctx context.Context, tail int, follow bool) (io.ReadCloser, error) {
 	return m.logs.reader(ctx, tail, follow), nil
 }
@@ -565,11 +565,11 @@ func validateSpec(spec service.ServiceSpec) error {
 		return ownershipError("foreground service identity is not canonical")
 	}
 	for label, path := range map[string]string{
-		"PMux executable": spec.PMuxPath,
+		"PMux executable":        spec.PMuxPath,
 		"CLIProxyAPI executable": spec.BinaryPath,
-		"config": spec.ConfigPath,
-		"runtime directory": spec.RuntimeDir,
-		"log directory": spec.LogDir,
+		"config":                 spec.ConfigPath,
+		"runtime directory":      spec.RuntimeDir,
+		"log directory":          spec.LogDir,
 	} {
 		if !filepath.IsAbs(path) {
 			return pmuxerr.New(pmuxerr.ConfigPathMismatch, pmuxerr.Environment, label+" path must be absolute")
@@ -704,7 +704,7 @@ func (b *logBuffer) reader(ctx context.Context, tail int, follow bool) io.ReadCl
 
 	reader, writer := io.Pipe()
 	go func() {
-		defer writer.Close()
+		defer func() { _ = writer.Close() }()
 		if _, err := io.WriteString(writer, snapshot); err != nil {
 			return
 		}

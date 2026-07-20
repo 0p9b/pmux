@@ -192,7 +192,7 @@ func TestLifecycleIsSymmetricThroughCOMAndUsesPMuxLogs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Logs() error = %v", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	contents, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatalf("read logs: %v", err)

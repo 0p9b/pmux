@@ -45,9 +45,9 @@ func TestInteractiveExplicitManagedSetupStillUsesGuidedContinuation(t *testing.T
 
 func TestSetupOmittedModeRejectedOutsideInteractiveTerminal(t *testing.T) {
 	for _, test := range []struct {
-		name string
+		name     string
 		terminal bool
-		args []string
+		args     []string
 	}{
 		{name: "non-tty", args: []string{"setup"}},
 		{name: "json", terminal: true, args: []string{"--json", "setup"}},
