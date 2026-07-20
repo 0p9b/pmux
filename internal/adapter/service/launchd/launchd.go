@@ -191,7 +191,11 @@ func (m *Manager) Start(ctx context.Context) error {
 		_, _ = m.runner.Run(ctx, "/bin/launchctl", "bootout", m.target())
 		if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
 			if !bootstrapAlreadyLoaded(err, out) {
-				return launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
+				loadOut, loadErr := m.runner.Run(ctx, "/bin/launchctl", "load", "-w", m.plistPath)
+				if loadErr != nil {
+					return launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
+				}
+				_ = loadOut
 			}
 		}
 		if out, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", m.target()); err != nil {
