@@ -339,7 +339,7 @@ func readDefinition(task *ole.IDispatch, name string) (TaskDefinition, error) {
 	if err != nil {
 		return out, err
 	}
-	count, _ = intProperty(actions, "Count")
+	count, _ := intProperty(actions, "Count")
 	if count < 1 {
 		actions.Release()
 		return out, errors.New("Task Scheduler definition has no action")
