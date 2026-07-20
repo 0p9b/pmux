@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"reflect"
@@ -77,14 +78,23 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve test executable: %v", err)
 	}
-	corePath := filepath.Join(root, "fake core", "cli-proxy-api")
+	hostPath := filepath.Join(root, "pmux-service-host")
+	corePath := filepath.Join(root, "fake-core")
+	copyExecutable(t, self, hostPath)
 	copyExecutable(t, self, corePath)
+	adHocSign(t, hostPath)
+	adHocSign(t, corePath)
+
 	configPath := filepath.Join(root, "instance", "config.json")
 	writeCoreConfig(t, configPath, e2eCoreConfig{Address: address})
 
 	runtimeDir := filepath.Join(root, "instance", "runtime")
 	logDir := filepath.Join(root, "state", "logs")
-	plistDir := filepath.Join(root, "Library", "LaunchAgents")
+	home := mustHome(t)
+	plistDir := filepath.Join(home, "Library", "LaunchAgents")
+	if err := os.MkdirAll(plistDir, 0o700); err != nil {
+		t.Fatalf("prepare LaunchAgents directory: %v", err)
+	}
 	poller := health.NewPoller(health.HTTPProbe{BaseURL: "http://" + address})
 	manager, err := New(Config{
 		InstanceID: instanceID,
@@ -98,14 +108,14 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	spec := service.ServiceSpec{
 		InstanceID: instanceID,
 		Identity:   label,
-		PMuxPath:   self,
+		PMuxPath:   hostPath,
 		BinaryPath: corePath,
 		ConfigPath: configPath,
 		RuntimeDir: runtimeDir,
 		LogDir:     logDir,
 		Environment: []string{
 			"PATH=/usr/bin:/bin",
-			"HOME=" + mustHome(t),
+			"HOME=" + home,
 			"TMPDIR=" + os.TempDir(),
 		},
 	}
@@ -287,6 +297,14 @@ func copyExecutable(t *testing.T, source, destination string) {
 	}
 	if err := output.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func adHocSign(t *testing.T, path string) {
+	t.Helper()
+	out, err := exec.Command("codesign", "-s", "-", "-f", path).CombinedOutput()
+	if err != nil {
+		t.Fatalf("codesign %s: %v\n%s", path, err, out)
 	}
 }
 

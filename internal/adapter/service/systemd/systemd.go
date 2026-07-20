@@ -365,7 +365,6 @@ func validateSpec(spec service.ServiceSpec) error {
 	return nil
 }
 
-
 func systemdPath(value string) string {
 	value = filepath.ToSlash(value)
 	value = strings.ReplaceAll(value, `\`, `\\`)

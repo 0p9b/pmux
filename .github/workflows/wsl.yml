@@ -17,9 +17,30 @@ jobs:
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
+      - name: Install WSL Ubuntu for acceptance
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $distro = 'Ubuntu-24.04'
+          $installed = @(wsl -l -q 2>$null)
+          if ($installed -notcontains $distro) {
+            wsl --install $distro --no-launch --web-download
+          }
+          $deadline = (Get-Date).AddMinutes(15)
+          do {
+            $installed = @(wsl -l -q 2>$null)
+            if ($installed -contains $distro) { break }
+            Start-Sleep -Seconds 10
+          } while ((Get-Date) -lt $deadline)
+          if ($installed -notcontains $distro) {
+            wsl -l -v
+            throw "WSL distribution $distro is not available"
+          }
+          wsl -d $distro -- bash -lc 'echo WSL ready'
       - name: Run WSL acceptance suite
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $repo = (wsl wslpath -u "$env:GITHUB_WORKSPACE").Trim()
-          wsl bash -lc "set -euo pipefail; cd '$repo' && bash .github/scripts/wsl-acceptance.sh"
+          $distro = 'Ubuntu-24.04'
+          $repo = (wsl -d $distro wslpath -u "$env:GITHUB_WORKSPACE").Trim()
+          wsl -d $distro bash -lc "set -euo pipefail; cd '$repo' && bash .github/scripts/wsl-acceptance.sh"

@@ -71,6 +71,23 @@ jobs:
           cat "$RUNNER_TEMP/systemd-user.log" >&2 || true
           echo "failed to provision release-gated systemd user manager" >&2
           exit 1
+      - name: Prepare macOS launchd user domain
+        if: startsWith(matrix.target, 'darwin-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          launchctl enable "gui/$uid" || true
+      - name: Ensure Task Scheduler service is running
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Service -Name Schedule -StartupType Manual -ErrorAction SilentlyContinue
+          Start-Service -Name Schedule
+          if ((Get-Service Schedule).Status -ne 'Running') {
+            throw 'Task Scheduler service is not running'
+          }
       - name: Require platform-tagged tests on this runner
         shell: bash
         run: |

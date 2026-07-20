@@ -21,17 +21,35 @@ permissions:
 
 jobs:
   live-provider:
-    if: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY != '' || secrets.PMUX_ACCEPTANCE_API_KEY != '' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Gate on repository secrets
+        id: gate
+        env:
+          PMUX_ACCEPTANCE_GEMINI_KEY: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY }}
+          PMUX_ACCEPTANCE_API_KEY: ${{ secrets.PMUX_ACCEPTANCE_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PMUX_ACCEPTANCE_GEMINI_KEY}" && -z "${PMUX_ACCEPTANCE_API_KEY}" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No PMUX_ACCEPTANCE_* secrets configured; skipping live provider acceptance."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Skip without secrets
+        if: steps.gate.outputs.skip == 'true'
+        run: echo "Skipped (configure PMUX_ACCEPTANCE_GEMINI_KEY or PMUX_ACCEPTANCE_API_KEY to run)."
       - uses: actions/setup-go@v5
+        if: steps.gate.outputs.skip != 'true'
         with:
           go-version-file: go.mod
           cache: true
       - name: Build PMux
+        if: steps.gate.outputs.skip != 'true'
         run: go build -trimpath -o pmux ./cmd/pmux
       - name: Run provider verification
+        if: steps.gate.outputs.skip != 'true'
         env:
           PMUX_ACCEPTANCE_PROVIDER: ${{ inputs.provider }}
           PMUX_ACCEPTANCE_GEMINI_KEY: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY }}

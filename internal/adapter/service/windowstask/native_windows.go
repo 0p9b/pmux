@@ -424,7 +424,15 @@ func taskState(value int) TaskState {
 }
 func taskMissing(err error) bool {
 	var oleErr *ole.OleError
-	return errors.As(err, &oleErr) && (uint32(oleErr.Code()) == 0x80070002 || uint32(oleErr.Code()) == 0x8004130f)
+	if !errors.As(err, &oleErr) {
+		return false
+	}
+	switch uint32(oleErr.Code()) {
+	case 0x80070002, 0x80041308, 0x8004130f:
+		return true
+	default:
+		return false
+	}
 }
 func isoDuration(value time.Duration) string {
 	if value <= 0 {
