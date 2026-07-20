@@ -1,0 +1,51 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-config-show - Show redacted configuration
+
+
+.SH SYNOPSIS
+\fBpmux config show [flags]\fP
+
+
+.SH DESCRIPTION
+Show redacted configuration
+
+
+.SH OPTIONS
+\fB--effective\fP[=false]
+	include source and activation metadata
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for show
+
+.PP
+\fB--reveal-paths\fP[=false]
+	reveal paths, never secrets
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--scope\fP="proxy"
+	configuration scope: proxy or pmux
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-config(1)\fP

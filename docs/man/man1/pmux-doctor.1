@@ -1,0 +1,55 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-doctor - Diagnose and repair PMux
+
+
+.SH SYNOPSIS
+\fBpmux doctor [flags]\fP
+
+
+.SH DESCRIPTION
+Diagnose and repair PMux
+
+
+.SH OPTIONS
+\fB--bundle\fP[=""]
+	create a redacted bundle at an optional path
+
+.PP
+\fB--check\fP=[]
+	run a named check (repeatable)
+
+.PP
+\fB--fix\fP[=[]]
+	apply named fixes, or all eligible fixes when omitted
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for doctor
+
+.PP
+\fB--online\fP[=false]
+	include explicit online checks
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux(1)\fP

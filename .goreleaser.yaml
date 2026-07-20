@@ -1,0 +1,96 @@
+version: 2
+
+project_name: pmux
+
+before:
+  hooks:
+    - go mod verify
+    - go test ./cmd/pmux -run ^TestGeneratedCommandDocsHaveNoDrift$
+    - go run -tags docsgen ./cmd/pmux
+    - go test ./...
+
+builds:
+  - id: pmux-unix
+    main: ./cmd/pmux
+    binary: pmux
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/0p9b/pmux/internal/version.Version={{.Version}}
+      - -X github.com/0p9b/pmux/internal/version.Commit={{.Commit}}
+      - -X github.com/0p9b/pmux/internal/version.Date={{.Date}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+  - id: pmux-windows-amd64
+    main: ./cmd/pmux
+    binary: pmux
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/0p9b/pmux/internal/version.Version={{.Version}}
+      - -X github.com/0p9b/pmux/internal/version.Commit={{.Commit}}
+      - -X github.com/0p9b/pmux/internal/version.Date={{.Date}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: pmux
+    ids:
+      - pmux-unix
+      - pmux-windows-amd64
+    name_template: "pmux_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - docs/reference/commands/*.md
+      - docs/man/man1/*.1
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: archive-sbom
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.spdx.sbom"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: 0p9b
+    name: pmux
+  draft: false
+  prerelease: auto
+
+source:
+  enabled: true
+  name_template: "pmux_{{ .Version }}_source"
+
+report_sizes: true

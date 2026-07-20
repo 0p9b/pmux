@@ -1,0 +1,55 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-setup - Set up or adopt CLIProxyAPI
+
+
+.SH SYNOPSIS
+\fBpmux setup [flags]\fP
+
+
+.SH DESCRIPTION
+Set up or adopt CLIProxyAPI
+
+
+.SH OPTIONS
+\fB--config-path\fP=""
+	absolute CLIProxyAPI config path
+
+.PP
+\fB--harden\fP[=false]
+	run the separately previewed adoption hardening transaction
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for setup
+
+.PP
+\fB--mode\fP=""
+	setup mode: managed or adopt
+
+.PP
+\fB--proxy-path\fP=""
+	absolute CLIProxyAPI executable path
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux(1)\fP

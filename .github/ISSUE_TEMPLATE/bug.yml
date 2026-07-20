@@ -1,0 +1,107 @@
+name: Bug report
+description: Report a reproducible PMux defect (not a security vulnerability)
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve PMux. PMux is currently pre-v1; implementation does not imply native acceptance is complete.
+
+        **Do not include complete secrets, callback URLs, auth-file contents, service-account files, SSH keys, or an unreviewed diagnostic bundle.** Report security problems through [private vulnerability reporting](https://github.com/0p9b/pmux/security/advisories/new).
+  - type: input
+    id: pmux-version
+    attributes:
+      label: PMux version
+      description: Output of `pmux version`, with paths/account data redacted if necessary.
+      placeholder: v0.x.y (commit if known)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Linux amd64
+        - Linux arm64
+        - macOS amd64
+        - macOS arm64
+        - Windows amd64
+        - WSL
+        - Other / currently unsupported
+    validations:
+      required: true
+  - type: dropdown
+    id: installation-mode
+    attributes:
+      label: Installation mode
+      options:
+        - Managed
+        - Adopted native installation
+        - Adopted Docker installation
+        - Not configured
+        - Unknown
+    validations:
+      required: true
+  - type: input
+    id: backend
+    attributes:
+      label: Service backend
+      placeholder: foreground, systemd-user, launchd, windows-task, docker-unmanaged, or unknown
+    validations:
+      required: true
+  - type: input
+    id: core-version
+    attributes:
+      label: CLIProxyAPI version
+      placeholder: 7.2.92 or unknown
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Canonical command
+      description: The exact PMux command, with secret-bearing input removed.
+      placeholder: pmux --json doctor
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include all required setup using only redacted values.
+      placeholder: |
+        1. Run ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include exit status and safe output. Remove account names, tokens, keys, callback data, and private paths when they are not essential.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted doctor evidence
+      description: Paste reviewed `pmux --json doctor` output or describe a privately retained bundle. Never attach auth files or complete credentials.
+      render: shell
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I reviewed this report and attachments and removed complete secrets, auth-file contents, callback URLs, service-account data, and SSH private material.
+          required: true
+        - label: This is not a security vulnerability requiring private handling.
+          required: true

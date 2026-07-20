@@ -1,0 +1,43 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-config - Inspect or change configuration
+
+
+.SH SYNOPSIS
+\fBpmux config [flags]\fP
+
+
+.SH DESCRIPTION
+Inspect or change configuration
+
+
+.SH OPTIONS
+\fB-h\fP, \fB--help\fP[=false]
+	help for config
+
+.PP
+\fB--scope\fP="proxy"
+	configuration scope: proxy or pmux
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux(1)\fP, \fBpmux-config-backup(1)\fP, \fBpmux-config-edit(1)\fP, \fBpmux-config-get(1)\fP, \fBpmux-config-restore(1)\fP, \fBpmux-config-set(1)\fP, \fBpmux-config-show(1)\fP

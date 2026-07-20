@@ -1,0 +1,67 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-providers-login - Authenticate or configure a provider
+
+
+.SH SYNOPSIS
+\fBpmux providers login  [flags]\fP
+
+
+.SH DESCRIPTION
+Authenticate or configure a provider
+
+
+.SH OPTIONS
+\fB--api-key-file\fP=""
+	read an API key from a private file
+
+.PP
+\fB--api-key-stdin\fP[=false]
+	read an API key from standard input
+
+.PP
+\fB--callback-url-stdin\fP[=false]
+	read a callback URL from standard input
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for login
+
+.PP
+\fB--method\fP="auto"
+	authentication method: auto, browser, or device
+
+.PP
+\fB--no-browser\fP[=false]
+	do not open a browser
+
+.PP
+\fB--service-account\fP=""
+	private Vertex service-account JSON path
+
+.PP
+\fB--vertex-prefix\fP=""
+	explicit Vertex import prefix
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-providers(1)\fP

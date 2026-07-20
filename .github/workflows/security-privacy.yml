@@ -1,0 +1,82 @@
+name: Security and privacy
+
+on:
+  workflow_call:
+  push:
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 3"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+
+  security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Reject telemetry dependencies and imports
+        shell: python
+        run: |
+          from pathlib import Path
+          import sys
+
+          forbidden = {
+              "appsignal", "datadog", "honeycomb", "mixpanel", "newrelic",
+              "opencensus", "opentelemetry", "prometheus/client", "rollbar",
+              "segmentio/analytics", "sentry-go", "splunk-otel", "statsd",
+          }
+          candidates = [Path("go.mod")]
+          if Path("go.sum").exists():
+              candidates.append(Path("go.sum"))
+          candidates.extend(
+              p for p in Path(".").rglob("*.go")
+              if ".tools" not in p.parts and ".git" not in p.parts
+          )
+          violations = []
+          for path in candidates:
+              text = path.read_text(encoding="utf-8", errors="replace").lower()
+              for token in forbidden:
+                  if token in text:
+                      violations.append(f"{path}: forbidden telemetry token {token}")
+          if violations:
+              print("\n".join(violations), file=sys.stderr)
+              raise SystemExit(1)
+          print(f"checked {len(candidates)} source and module files")
+      - name: Run vulnerability analysis
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck ./...
+      - name: Build zero-egress smoke target
+        run: go build -trimpath -o ./pmux ./cmd/pmux
+      - name: Verify ordinary startup has no non-loopback egress
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes strace
+          set +e
+          strace -f -e trace=network -o network.trace ./pmux --json >/tmp/pmux-status.json 2>/tmp/pmux-status.err
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          trace = Path("network.trace").read_text(encoding="utf-8", errors="replace")
+          addresses = re.findall(r'inet_addr\("([^"]+)"\)', trace)
+          addresses += re.findall(r'inet_pton\(AF_INET6,\s*"([^"]+)"', trace)
+          remote = [a for a in addresses if not (a == "::1" or a.startswith("127."))]
+          if remote:
+              raise SystemExit("ordinary startup attempted non-loopback egress: " + ", ".join(sorted(set(remote))))
+          print("ordinary startup made no non-loopback connection attempts")
+          PY

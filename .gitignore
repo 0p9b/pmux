@@ -1,0 +1,23 @@
+# Build and release output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage*.txt
+coverage*.html
+
+# Local toolchains and caches
+/.tools/
+/.cache/
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local PMux runtime artifacts
+pmux-bundle-*.tar.gz

@@ -1,0 +1,77 @@
+name: Accessibility report
+description: Report a TUI, CLI, JSON, keyboard, screen-reader, color, motion, or parity problem
+title: "accessibility: "
+labels:
+  - accessibility
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CLI and machine-readable parity is PMux's supported accessibility baseline. Every operational TUI action must have equivalent canonical CLI and JSON or NDJSON behavior.
+
+        Do not include complete secrets, protected callback data, auth-file contents, or an unreviewed bundle.
+  - type: input
+    id: pmux-version
+    attributes:
+      label: PMux version
+      placeholder: v0.x.y (commit if known)
+    validations:
+      required: true
+  - type: input
+    id: platform-terminal
+    attributes:
+      label: OS, architecture, and terminal
+      placeholder: Linux amd64; terminal name/version; 80x24
+    validations:
+      required: true
+  - type: input
+    id: assistive-tech
+    attributes:
+      label: Assistive technology
+      description: Screen reader, magnifier, speech input, keyboard-only use, or not applicable.
+    validations:
+      required: true
+  - type: dropdown
+    id: rendering
+    attributes:
+      label: Rendering mode
+      options:
+        - Default TUI
+        - High contrast
+        - NO_COLOR
+        - TERM=dumb / line-oriented
+        - JSON
+        - NDJSON stream
+    validations:
+      required: true
+  - type: textarea
+    id: operation
+    attributes:
+      label: Operation and canonical equivalent
+      description: Name the TUI action and its expected canonical CLI/JSON form.
+      placeholder: |
+        TUI action: Models refresh
+        CLI: pmux models list --refresh
+        Machine form: pmux --json models list --refresh
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Missing or divergent behavior
+      description: Include keyboard steps, focus/reading order, expected announcement/output, and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: safe-output
+    attributes:
+      label: Reviewed output or transcript
+      description: Optional plain-text transcript with private data and complete secrets removed.
+      render: shell
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I reviewed the report for complete secrets, auth-file content, callback data, and other private information.
+          required: true

@@ -1,0 +1,59 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-models-list - List dynamically discovered models
+
+
+.SH SYNOPSIS
+\fBpmux models list [flags]\fP
+
+
+.SH DESCRIPTION
+List dynamically discovered models
+
+
+.SH OPTIONS
+\fB--available\fP[=false]
+	show available models only
+
+.PP
+\fB--favorite\fP[=false]
+	show favorites only
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for list
+
+.PP
+\fB--provider\fP=""
+	filter by provider
+
+.PP
+\fB--refresh\fP[=false]
+	require a live refresh
+
+.PP
+\fB--search\fP=""
+	search model IDs and attribution
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-models(1)\fP

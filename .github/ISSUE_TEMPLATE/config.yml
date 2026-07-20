@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/0p9b/pmux/security/advisories/new
+    about: Report vulnerabilities, credential disclosure, unexpected egress, or other security/privacy problems privately.
+  - name: PMux documentation
+    url: https://github.com/0p9b/pmux/tree/main/docs
+    about: Review installation, service, provider, doctor, security, and accessibility guidance before filing.

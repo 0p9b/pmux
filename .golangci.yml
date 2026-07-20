@@ -1,0 +1,116 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    - depguard
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - revive
+    - staticcheck
+    - unused
+  settings:
+    depguard:
+      rules:
+        domain-boundary:
+          files:
+            - "**/internal/domain/*.go"
+            - "**/internal/domain/**/*.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/0p9b/pmux/internal/domain
+            - github.com/0p9b/pmux/internal/pmuxerr
+        app-boundary:
+          files:
+            - "**/internal/app/*.go"
+            - "**/internal/app/**/*.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/0p9b/pmux/internal/app
+            - github.com/0p9b/pmux/internal/domain
+            - github.com/0p9b/pmux/internal/pmuxerr
+            - github.com/0p9b/pmux/internal/redact
+            - github.com/0p9b/pmux/internal/state
+            - github.com/0p9b/pmux/internal/journal
+            - github.com/0p9b/pmux/internal/audit
+        adapter-boundary:
+          files:
+            - "**/internal/adapter/*.go"
+            - "**/internal/adapter/**/*.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/0p9b/pmux/internal/adapter
+            - github.com/0p9b/pmux/internal/domain
+            - github.com/0p9b/pmux/internal/pmuxerr
+            - github.com/0p9b/pmux/internal/redact
+            - golang.org/x/sys
+            - gopkg.in/yaml.v3
+        tui-boundary:
+          files:
+            - "**/internal/tui/*.go"
+            - "**/internal/tui/**/*.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/0p9b/pmux/internal/tui
+            - github.com/0p9b/pmux/internal/app
+            - github.com/0p9b/pmux/internal/pmuxerr
+            - github.com/0p9b/pmux/internal/redact
+            - github.com/charmbracelet/bubbles
+            - github.com/charmbracelet/bubbletea
+            - github.com/charmbracelet/lipgloss
+        persistence-boundary:
+          files:
+            - "**/internal/state/*.go"
+            - "**/internal/state/**/*.go"
+            - "**/internal/journal/*.go"
+            - "**/internal/journal/**/*.go"
+            - "**/internal/audit/*.go"
+            - "**/internal/audit/**/*.go"
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/0p9b/pmux/internal/state
+            - github.com/0p9b/pmux/internal/journal
+            - github.com/0p9b/pmux/internal/audit
+            - github.com/0p9b/pmux/internal/domain
+            - github.com/0p9b/pmux/internal/pmuxerr
+            - github.com/0p9b/pmux/internal/redact
+        yaml-only-in-configfile:
+          files:
+            - $all
+            - "!**/internal/adapter/configfile/*.go"
+            - "!**/internal/adapter/configfile/**/*.go"
+          deny:
+            - pkg: gopkg.in/yaml.v3
+              desc: YAML syntax belongs only in internal/adapter/configfile
+        no-cmd-imports:
+          files:
+            - "**/internal/**/*.go"
+          deny:
+            - pkg: github.com/0p9b/pmux/cmd
+              desc: internal packages must never import the composition root
+  exclusions:
+    generated: strict
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: strict
+
+output:
+  formats:
+    text:
+      path: stdout

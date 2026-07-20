@@ -1,0 +1,101 @@
+name: Platform end-to-end
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
+  push:
+    tags:
+      - "v*-rc*"
+
+permissions:
+  contents: read
+
+jobs:
+  platform-smoke:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-amd64
+            runner: ubuntu-24.04
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+          - target: darwin-amd64
+            runner: macos-13
+          - target: darwin-arm64
+            runner: macos-14
+          - target: windows-amd64
+            runner: windows-2025
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Provision Linux systemd user manager
+        if: startsWith(matrix.target, 'linux-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          runtime_dir="/run/user/$uid"
+          bus_address="unix:path=$runtime_dir/bus"
+          sudo install -d -m 0700 -o "$USER" -g "$(id -gn)" "$runtime_dir"
+          export XDG_RUNTIME_DIR="$runtime_dir"
+          export DBUS_SESSION_BUS_ADDRESS="$bus_address"
+
+          if ! systemctl --user show-environment >/dev/null 2>&1; then
+            rm -f "$runtime_dir/bus"
+            dbus-daemon --session \
+              --address="$bus_address" \
+              --fork \
+              --nopidfile
+            systemd --user >"$RUNNER_TEMP/systemd-user.log" 2>&1 &
+          fi
+
+          for attempt in {1..30}; do
+            if systemctl --user show-environment >/dev/null 2>&1; then
+              {
+                printf 'XDG_RUNTIME_DIR=%s\n' "$runtime_dir"
+                printf 'DBUS_SESSION_BUS_ADDRESS=%s\n' "$bus_address"
+              } >>"$GITHUB_ENV"
+              systemctl --user reset-failed
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/systemd-user.log" >&2 || true
+          echo "failed to provision release-gated systemd user manager" >&2
+          exit 1
+      - name: Require platform-tagged tests on this runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          with_tag="$RUNNER_TEMP/platform-e2e-with-tag.txt"
+          without_tag="$RUNNER_TEMP/platform-e2e-without-tag.txt"
+          added="$RUNNER_TEMP/platform-e2e-added.txt"
+          go list -tags=platform_e2e \
+            -f '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}' \
+            ./... | sed '/^$/d' | sort -u >"$with_tag"
+          go list \
+            -f '{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}' \
+            ./... | sed '/^$/d' | sort -u >"$without_tag"
+          comm -23 "$with_tag" "$without_tag" >"$added"
+          if [[ ! -s "$added" ]]; then
+            echo "no platform_e2e-tagged test is selected on ${{ matrix.target }}" >&2
+            exit 1
+          fi
+          echo "selected platform_e2e test files:"
+          cat "$added"
+      - name: Run platform integration suite
+        env:
+          PMUX_RELEASE_E2E: "1"
+        run: go test -tags=platform_e2e ./...
+      - name: Build PMux
+        run: go build -trimpath -o pmux${{ runner.os == 'Windows' && '.exe' || '' }} ./cmd/pmux
+      - name: Verify local-only version path
+        run: ./pmux${{ runner.os == 'Windows' && '.exe' || '' }} version

@@ -1,0 +1,282 @@
+name: CLIProxyAPI compatibility
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 3 * * *"
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release-assets:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'compat'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        core-version: ["7.2.91", "7.2.92"]
+        target:
+          - linux-amd64
+          - linux-arm64
+          - darwin-amd64
+          - darwin-arm64
+          - windows-amd64
+        include:
+          - target: linux-amd64
+            upstream-os: linux
+            upstream-arch: amd64
+            extension: tar.gz
+          - target: linux-arm64
+            upstream-os: linux
+            upstream-arch: arm64
+            extension: tar.gz
+          - target: darwin-amd64
+            upstream-os: darwin
+            upstream-arch: amd64
+            extension: tar.gz
+          - target: darwin-arm64
+            upstream-os: darwin
+            upstream-arch: arm64
+            extension: tar.gz
+          - target: windows-amd64
+            upstream-os: windows
+            upstream-arch: amd64
+            extension: zip
+    steps:
+      - name: Verify archive checksum, executable format, and architecture
+        shell: python
+        env:
+          CORE_VERSION: ${{ matrix.core-version }}
+          TARGET: ${{ matrix.target }}
+          UPSTREAM_OS: ${{ matrix.upstream-os }}
+          UPSTREAM_ARCH: ${{ matrix.upstream-arch }}
+          EXTENSION: ${{ matrix.extension }}
+        run: |
+          import hashlib
+          import io
+          import os
+          import struct
+          import tarfile
+          import urllib.request
+          import zipfile
+
+          version = os.environ["CORE_VERSION"]
+          target_os = os.environ["UPSTREAM_OS"]
+          target_arch = os.environ["UPSTREAM_ARCH"]
+          extension = os.environ["EXTENSION"]
+          filename = f"CLIProxyAPI_{version}_{target_os}_{target_arch}.{extension}"
+          base = f"https://github.com/router-for-me/CLIProxyAPI/releases/download/v{version}"
+          with urllib.request.urlopen(f"{base}/checksums.txt", timeout=30) as response:
+              checksum_text = response.read().decode("utf-8")
+          matches = [line.split() for line in checksum_text.splitlines() if line.split()[-1:] == [filename]]
+          if len(matches) != 1 or len(matches[0]) < 2:
+              raise SystemExit(f"expected exactly one checksum entry for {filename}")
+          expected = matches[0][0].lower()
+          with urllib.request.urlopen(f"{base}/{filename}", timeout=120) as response:
+              archive = response.read()
+          actual = hashlib.sha256(archive).hexdigest()
+          if actual != expected:
+              raise SystemExit(f"checksum mismatch for {filename}: expected {expected}, got {actual}")
+
+          executable_name = "cli-proxy-api.exe" if target_os == "windows" else "cli-proxy-api"
+          if extension == "zip":
+              with zipfile.ZipFile(io.BytesIO(archive)) as package:
+                  candidates = [n for n in package.namelist() if n.rsplit("/", 1)[-1] == executable_name]
+                  if len(candidates) != 1:
+                      raise SystemExit(f"expected one {executable_name}, found {candidates}")
+                  binary = package.read(candidates[0])
+          else:
+              with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as package:
+                  candidates = [m for m in package.getmembers() if m.isfile() and m.name.rsplit("/", 1)[-1] == executable_name]
+                  if len(candidates) != 1:
+                      raise SystemExit(f"expected one {executable_name}, found {[m.name for m in candidates]}")
+                  binary = package.extractfile(candidates[0]).read()
+
+          if target_os == "linux":
+              if binary[:4] != b"\x7fELF":
+                  raise SystemExit("expected ELF executable")
+              machine = struct.unpack_from("<H", binary, 18)[0]
+              expected_machine = {"amd64": 62, "arm64": 183}[target_arch]
+          elif target_os == "darwin":
+              if binary[:4] != b"\xcf\xfa\xed\xfe":
+                  raise SystemExit("expected 64-bit little-endian Mach-O executable")
+              machine = struct.unpack_from("<I", binary, 4)[0]
+              expected_machine = {"amd64": 0x01000007, "arm64": 0x0100000c}[target_arch]
+          else:
+              if binary[:2] != b"MZ":
+                  raise SystemExit("expected PE executable")
+              pe_offset = struct.unpack_from("<I", binary, 0x3c)[0]
+              if binary[pe_offset:pe_offset + 4] != b"PE\0\0":
+                  raise SystemExit("invalid PE signature")
+              machine = struct.unpack_from("<H", binary, pe_offset + 4)[0]
+              expected_machine = 0x8664
+          if machine != expected_machine:
+              raise SystemExit(f"wrong machine for {os.environ['TARGET']}: {machine:#x}")
+          print(f"verified {filename}: sha256={actual}, machine={machine:#x}")
+
+  real-core-contract:
+    name: Real core contract v${{ matrix.core-version }} (linux-amd64)
+    if: github.event_name != 'pull_request' || github.event.label.name == 'compat'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        core-version: ["7.2.91", "7.2.92"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Download and checksum-verify CLIProxyAPI
+        shell: bash
+        env:
+          CORE_VERSION: ${{ matrix.core-version }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/pmux-compat-${CORE_VERSION}"
+          archive_name="CLIProxyAPI_${CORE_VERSION}_linux_amd64.tar.gz"
+          archive="$root/$archive_name"
+          base="https://github.com/router-for-me/CLIProxyAPI/releases/download/v${CORE_VERSION}"
+          rm -rf "$root"
+          mkdir -p "$root/bin" "$root/auth" "$root/runtime"
+
+          curl --fail --location --silent --show-error \
+            --output "$root/checksums.txt" "$base/checksums.txt"
+          curl --fail --location --silent --show-error \
+            --output "$archive" "$base/$archive_name"
+
+          mapfile -t checksum_rows < <(awk -v name="$archive_name" '$NF == name {print $1}' "$root/checksums.txt")
+          if [[ "${#checksum_rows[@]}" -ne 1 ]]; then
+            printf 'expected exactly one checksum entry for %s\n' "$archive_name" >&2
+            exit 1
+          fi
+          actual="$(sha256sum "$archive" | awk '{print $1}')"
+          if [[ "$actual" != "${checksum_rows[0],,}" ]]; then
+            printf 'checksum mismatch for %s: expected %s, got %s\n' \
+              "$archive_name" "${checksum_rows[0],,}" "$actual" >&2
+            exit 1
+          fi
+
+          tar -xzf "$archive" -C "$root/bin"
+          shopt -s nullglob
+          candidates=("$root/bin/cli-proxy-api" "$root/bin"/*/cli-proxy-api)
+          if [[ "${#candidates[@]}" -ne 1 ]]; then
+            printf 'expected exactly one cli-proxy-api executable, found %s\n' "${#candidates[@]}" >&2
+            exit 1
+          fi
+          chmod 0755 "${candidates[0]}"
+
+          port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
+          proxy_key="sk-$(openssl rand -hex 32)"
+          management_key="$(openssl rand -hex 32)"
+          printf '::add-mask::%s\n' "$proxy_key"
+          printf '::add-mask::%s\n' "$management_key"
+
+          config="$root/config.yaml"
+          cat >"$config" <<EOF
+          host: 127.0.0.1
+          port: $port
+          auth-dir: "$root/auth"
+          api-keys:
+            - "$proxy_key"
+          remote-management:
+            allow-remote: false
+            secret-key: "$management_key"
+            disable-control-panel: true
+          ws-auth: true
+          request-log: false
+          logging-to-file: false
+          usage-statistics-enabled: false
+          EOF
+          chmod 0600 "$config"
+
+          {
+            printf 'PMUX_COMPAT_ROOT=%s\n' "$root"
+            printf 'PMUX_COMPAT_BINARY=%s\n' "${candidates[0]}"
+            printf 'PMUX_COMPAT_CONFIG=%s\n' "$config"
+            printf 'PMUX_COMPAT_BASE_URL=http://127.0.0.1:%s\n' "$port"
+            printf 'PMUX_COMPAT_MANAGEMENT_KEY=%s\n' "$management_key"
+            printf 'PMUX_COMPAT_PROXY_KEY=%s\n' "$proxy_key"
+          } >>"$GITHUB_ENV"
+      - name: Start isolated real core
+        shell: bash
+        run: |
+          set -euo pipefail
+          (
+            cd "$PMUX_COMPAT_ROOT/runtime"
+            exec env -i \
+              HOME="$HOME" \
+              PATH="$PATH" \
+              TMPDIR="${TMPDIR:-/tmp}" \
+              "$PMUX_COMPAT_BINARY" -config "$PMUX_COMPAT_CONFIG"
+          ) >"$PMUX_COMPAT_ROOT/core.log" 2>&1 &
+          printf '%s\n' "$!" >"$PMUX_COMPAT_ROOT/core.pid"
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error \
+              --max-time 2 "$PMUX_COMPAT_BASE_URL/healthz" >/dev/null; then
+              exit 0
+            fi
+            if ! kill -0 "$(cat "$PMUX_COMPAT_ROOT/core.pid")" 2>/dev/null; then
+              printf 'CLIProxyAPI exited before becoming healthy\n' >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          printf 'CLIProxyAPI did not become healthy within 30 seconds\n' >&2
+          exit 1
+      - name: Run real-core management contract
+        run: go test -tags=compat -run TestRealCoreContract ./internal/adapter/mgmtapi
+      - name: Stop isolated core and sanitize logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          pid_file="${PMUX_COMPAT_ROOT:-}/core.pid"
+          if [[ -f "$pid_file" ]]; then
+            pid="$(cat "$pid_file")"
+            kill "$pid" 2>/dev/null || true
+            for attempt in {1..10}; do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+            if kill -0 "$pid" 2>/dev/null; then
+              kill -9 "$pid" 2>/dev/null || true
+            fi
+            wait "$pid" 2>/dev/null || true
+          fi
+
+          if [[ -f "${PMUX_COMPAT_ROOT:-}/core.log" ]]; then
+            python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+
+          root = Path(os.environ["PMUX_COMPAT_ROOT"])
+          text = (root / "core.log").read_text(encoding="utf-8", errors="replace")
+          for name in ("PMUX_COMPAT_MANAGEMENT_KEY", "PMUX_COMPAT_PROXY_KEY"):
+              value = os.environ.get(name, "")
+              if value:
+                  text = text.replace(value, "[REDACTED]")
+          text = re.sub(r"sk-[A-Za-z0-9_-]{8,}", "[REDACTED]", text)
+          text = re.sub(r"(?i)(authorization:\\s*bearer\\s+)\\S+", r"\\1[REDACTED]", text)
+          text = re.sub(r"\\x1b\\[[0-?]*[ -/]*[@-~]", "", text)
+          text = "".join(char for char in text if char in "\\n\\r\\t" or ord(char) >= 0x20)
+          (root / "core.sanitized.log").write_text(text, encoding="utf-8")
+          PY
+          fi
+      - name: Upload sanitized core log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compat-core-${{ matrix.core-version }}-failure
+          path: ${{ runner.temp }}/pmux-compat-${{ matrix.core-version }}/core.sanitized.log
+          if-no-files-found: warn
+          retention-days: 7

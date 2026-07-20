@@ -1,0 +1,87 @@
+name: Test
+
+on:
+  workflow_call:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.target }} / Go ${{ matrix.toolchain }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-amd64
+            runner: ubuntu-24.04
+            toolchain: stable
+          - target: linux-amd64
+            runner: ubuntu-24.04
+            toolchain: minimum
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            toolchain: stable
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            toolchain: minimum
+          - target: darwin-amd64
+            runner: macos-13
+            toolchain: stable
+          - target: darwin-amd64
+            runner: macos-13
+            toolchain: minimum
+          - target: darwin-arm64
+            runner: macos-14
+            toolchain: stable
+          - target: darwin-arm64
+            runner: macos-14
+            toolchain: minimum
+          - target: windows-amd64
+            runner: windows-2025
+            toolchain: stable
+          - target: windows-amd64
+            runner: windows-2025
+            toolchain: minimum
+    runs-on: ${{ matrix.runner }}
+    env:
+      GOTOOLCHAIN: ${{ matrix.toolchain == 'minimum' && 'local' || 'auto' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up stable Go toolchain
+        if: matrix.toolchain == 'stable'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Set up minimum Go toolchain
+        if: matrix.toolchain == 'minimum'
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.0
+          cache: true
+      - name: Verify selected Go toolchain
+        shell: bash
+        env:
+          EXPECTED_TOOLCHAIN: ${{ matrix.toolchain }}
+        run: |
+          set -euo pipefail
+          actual="$(go env GOVERSION)"
+          if [[ "$EXPECTED_TOOLCHAIN" == "minimum" && "$actual" != "go1.26.0" ]]; then
+            printf 'expected minimum toolchain go1.26.0, got %s\n' "$actual" >&2
+            exit 1
+          fi
+          printf 'using %s (%s)\n' "$actual" "$EXPECTED_TOOLCHAIN"
+      - name: Verify modules
+        run: go mod verify
+      - name: Test
+        run: go test ./...
+      - name: Build command
+        run: go build -trimpath ./cmd/pmux
+      - name: Smoke-test version
+        run: go run ./cmd/pmux version
+      - name: Race detector
+        if: matrix.target == 'linux-amd64' && matrix.toolchain == 'stable'
+        run: go test -race ./...

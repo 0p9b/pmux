@@ -1,0 +1,84 @@
+name: CLIProxyAPI compatibility report
+description: Report a measured management, auth, model, or core-version compatibility difference
+title: "compat: CLIProxyAPI "
+labels:
+  - compatibility
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Compatibility is established by real-core fixtures and per-endpoint probes, not version assumptions. The supported floor is 7.2.91 and the managed default is 7.2.92.
+
+        Do not include real credentials, callback URLs, auth-file contents, or raw secret-bearing HTTP bodies. Security-sensitive differences belong in [private vulnerability reporting](https://github.com/0p9b/pmux/security/advisories/new).
+  - type: input
+    id: pmux-version
+    attributes:
+      label: PMux version
+      placeholder: v0.x.y (commit if known)
+    validations:
+      required: true
+  - type: input
+    id: core-version
+    attributes:
+      label: CLIProxyAPI version
+      placeholder: 7.2.91, 7.2.92, newer measured version, or unknown
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Capability or endpoint family
+      placeholder: management-oauth, management-model-attribution, config.yaml, auth-files, logs, healthz
+    validations:
+      required: true
+  - type: textarea
+    id: probe
+    attributes:
+      label: Probe and observed behavior
+      description: Identify the method/path or subprocess flow, safe status/shape, and whether the response included `X-CPA-VERSION`.
+      placeholder: |
+        Probe: GET /v0/management/...
+        Observed status/shape: ...
+        Expected classification: ...
+    validations:
+      required: true
+  - type: textarea
+    id: version-comparison
+    attributes:
+      label: 7.2.91 / 7.2.92 comparison
+      description: State the result on each required compatibility target when available. Do not infer an unexecuted result.
+      placeholder: |
+        7.2.91: executed / not executed; result ...
+        7.2.92: executed / not executed; result ...
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Reproducible non-secret fixture
+      description: Describe the isolated temporary core/config inputs and exact canonical PMux command. Use invalid/disposable fixture data only.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform used
+      options:
+        - Linux amd64
+        - Linux arm64
+        - macOS amd64
+        - macOS arm64
+        - Windows amd64
+        - WSL
+        - Other / currently unsupported
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I measured the behavior stated above and clearly marked anything not executed.
+          required: true
+        - label: This report contains no complete secret, auth-file content, callback URL, or service-account payload.
+          required: true

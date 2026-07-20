@@ -1,0 +1,31 @@
+## pmux providers list
+
+List providers
+
+```
+pmux providers list [flags]
+```
+
+### Options
+
+```
+      --enabled string   filter by enabled state: true or false
+  -h, --help             help for list
+      --refresh          refresh provider state
+      --status string    filter by status
+      --type string      filter by capability type
+```
+
+### Options inherited from parent commands
+
+```
+      --config-dir string   override the PMux config root
+      --json                emit machine-readable JSON or NDJSON
+      --verbose             write safe diagnostic details to stderr
+      --yes                 accept the command's defined confirmation
+```
+
+### SEE ALSO
+
+* [pmux providers](pmux_providers.md)	 - Manage providers
+

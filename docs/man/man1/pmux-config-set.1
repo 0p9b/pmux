@@ -1,0 +1,47 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-config-set - Set one known configuration value
+
+
+.SH SYNOPSIS
+\fBpmux config set   [flags]\fP
+
+
+.SH DESCRIPTION
+Set one known configuration value
+
+
+.SH OPTIONS
+\fB-h\fP, \fB--help\fP[=false]
+	help for set
+
+.PP
+\fB--restart\fP[=false]
+	restart after a restart-required change
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--scope\fP="proxy"
+	configuration scope: proxy or pmux
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-config(1)\fP

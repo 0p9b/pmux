@@ -1,0 +1,27 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  golangci:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify modules
+        run: go mod verify
+      - name: Run Go linters and depguard
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.6
+          args: --timeout=5m
+      - name: Check module graph
+        run: go vet ./...

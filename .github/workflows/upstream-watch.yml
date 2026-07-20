@@ -1,0 +1,56 @@
+name: Upstream release watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11 5 * * *"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report a newer CLIProxyAPI release for compatibility review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const managedDefault = "v7.2.92";
+            const upstream = await github.rest.repos.getLatestRelease({
+              owner: "router-for-me",
+              repo: "CLIProxyAPI",
+            });
+            const tag = upstream.data.tag_name;
+            if (tag === managedDefault) {
+              core.info(`CLIProxyAPI ${tag} is already the tested managed default`);
+              return;
+            }
+
+            const title = `Core ${tag} released — compatibility check`;
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "all",
+              per_page: 100,
+            });
+            if (existing.some(issue => issue.title === title)) {
+              core.info(`Issue already exists: ${title}`);
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body: [
+                `CLIProxyAPI ${tag} is newer than PMux's tested managed default ${managedDefault}.`,
+                "",
+                "Run the complete compatibility workflow against v7.2.91, v7.2.92, and this release.",
+                "Do not change the managed default, maximum-tested version, or compatibility floor automatically.",
+                "If the matrix fails, classify this issue as an upstream compatibility break and retain shipped policy unchanged.",
+                "",
+                `Upstream release: ${upstream.data.html_url}`,
+              ].join("\n"),
+            });

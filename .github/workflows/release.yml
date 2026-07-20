@@ -1,0 +1,277 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-tag:
+    name: Verify signed release tag
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify signed tag
+        run: git verify-tag "$GITHUB_REF_NAME"
+
+  tests:
+    name: Native test matrix gate
+    uses: ./.github/workflows/test.yml
+
+  compatibility:
+    name: CLIProxyAPI compatibility gate
+    uses: ./.github/workflows/compat.yml
+
+  platform-e2e:
+    name: Native platform E2E gate
+    uses: ./.github/workflows/platform-e2e.yml
+
+  wsl:
+    name: WSL acceptance gate
+    uses: ./.github/workflows/wsl.yml
+
+  security-privacy:
+    name: Security, privacy, and no-egress gate
+    uses: ./.github/workflows/security-privacy.yml
+
+  prepare-release:
+    name: Build and inventory release candidate
+    needs:
+      - verify-tag
+      - tests
+      - compatibility
+      - platform-e2e
+      - wsl
+      - security-privacy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install Syft for SPDX SBOMs
+        uses: anchore/sbom-action/download-syft@v0
+      - name: Build release candidate without publishing
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.8.2
+          args: release --clean --skip=publish
+      - name: Stage exactly the approved target matrix
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          archives=(
+            "pmux_${version}_linux_amd64.tar.gz"
+            "pmux_${version}_linux_arm64.tar.gz"
+            "pmux_${version}_darwin_amd64.tar.gz"
+            "pmux_${version}_darwin_arm64.tar.gz"
+            "pmux_${version}_windows_amd64.zip"
+          )
+
+          rm -rf release-candidate
+          mkdir release-candidate
+          for archive in "${archives[@]}"; do
+            test -s "dist/${archive}"
+            test -s "dist/${archive}.spdx.sbom"
+            cp "dist/${archive}" "dist/${archive}.spdx.sbom" release-candidate/
+          done
+
+          (
+            cd release-candidate
+            sha256sum "${archives[@]}" > checksums.txt
+          )
+      - name: Upload private release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: release-candidate/
+          if-no-files-found: error
+          retention-days: 2
+
+  verify-release-set:
+    name: Verify SBOMs and exact release set
+    needs: prepare-release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: release-candidate
+      - name: Verify exact asset set and SPDX SBOMs
+        shell: python
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          from pathlib import Path
+          import os
+
+          root = Path("release-candidate")
+          version = os.environ["TAG"].removeprefix("v")
+          archives = {
+              f"pmux_{version}_linux_amd64.tar.gz",
+              f"pmux_{version}_linux_arm64.tar.gz",
+              f"pmux_{version}_darwin_amd64.tar.gz",
+              f"pmux_{version}_darwin_arm64.tar.gz",
+              f"pmux_{version}_windows_amd64.zip",
+          }
+          expected = archives | {f"{name}.spdx.sbom" for name in archives} | {"checksums.txt"}
+          actual = {path.name for path in root.iterdir() if path.is_file()}
+          if actual != expected:
+              raise SystemExit(
+                  f"release asset set mismatch; missing={sorted(expected - actual)}, "
+                  f"unexpected={sorted(actual - expected)}"
+              )
+          for archive in archives:
+              sbom = root / f"{archive}.spdx.sbom"
+              if not sbom.read_bytes().strip():
+                  raise SystemExit(f"empty SPDX SBOM: {sbom.name}")
+          print(f"verified exact five-target release set ({len(actual)} staged files)")
+
+  verify-native-assets:
+    name: Verify native asset (${{ matrix.target }})
+    needs: prepare-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-amd64
+            runner: ubuntu-24.04
+            os: linux
+            arch: amd64
+            extension: tar.gz
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+            extension: tar.gz
+          - target: darwin-amd64
+            runner: macos-13
+            os: darwin
+            arch: amd64
+            extension: tar.gz
+          - target: darwin-arm64
+            runner: macos-14
+            os: darwin
+            arch: arm64
+            extension: tar.gz
+          - target: windows-amd64
+            runner: windows-2025
+            os: windows
+            arch: amd64
+            extension: zip
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: release-candidate
+      - name: Verify checksum, SBOM, and native executable
+        shell: python
+        env:
+          TAG: ${{ github.ref_name }}
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+          EXTENSION: ${{ matrix.extension }}
+        run: |
+          from pathlib import Path
+          import hashlib
+          import os
+          import subprocess
+          import tarfile
+          import zipfile
+
+          root = Path("release-candidate")
+          version = os.environ["TAG"].removeprefix("v")
+          target_os = os.environ["TARGET_OS"]
+          asset = f"pmux_{version}_{target_os}_{os.environ['TARGET_ARCH']}.{os.environ['EXTENSION']}"
+          archive_path = root / asset
+          data = archive_path.read_bytes()
+          rows = [
+              line.split()
+              for line in (root / "checksums.txt").read_text().splitlines()
+              if line.split()[-1:] == [asset]
+          ]
+          if len(rows) != 1 or hashlib.sha256(data).hexdigest() != rows[0][0].lower():
+              raise SystemExit(f"checksum verification failed for {asset}")
+          sbom = root / f"{asset}.spdx.sbom"
+          if not sbom.is_file() or not sbom.read_bytes().strip():
+              raise SystemExit(f"missing or empty SPDX SBOM for {asset}")
+
+          executable_name = "pmux.exe" if target_os == "windows" else "pmux"
+          executable_path = Path(executable_name).resolve()
+          if asset.endswith(".zip"):
+              with zipfile.ZipFile(archive_path) as archive:
+                  members = [n for n in archive.namelist() if n.rsplit("/", 1)[-1] == executable_name]
+                  if len(members) != 1:
+                      raise SystemExit(f"{asset} must contain exactly one {executable_name}: {members}")
+                  executable_path.write_bytes(archive.read(members[0]))
+          else:
+              with tarfile.open(archive_path, "r:gz") as archive:
+                  members = [m for m in archive.getmembers() if m.isfile() and m.name.rsplit("/", 1)[-1] == executable_name]
+                  if len(members) != 1:
+                      raise SystemExit(f"{asset} must contain exactly one {executable_name}: {[m.name for m in members]}")
+                  extracted = archive.extractfile(members[0])
+                  if extracted is None:
+                      raise SystemExit(f"could not extract {executable_name} from {asset}")
+                  executable_path.write_bytes(extracted.read())
+              executable_path.chmod(0o755)
+
+          output = subprocess.check_output([str(executable_path), "version"], text=True)
+          if version not in output:
+              raise SystemExit(f"version output does not contain {version}: {output}")
+          print(output)
+
+  publish:
+    name: Publish verified GitHub Release
+    needs:
+      - verify-tag
+      - tests
+      - compatibility
+      - platform-e2e
+      - wsl
+      - security-privacy
+      - prepare-release
+      - verify-release-set
+      - verify-native-assets
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: release-candidate
+      - name: Create public release after every gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          flags=(--verify-tag --title "$TAG" --generate-notes)
+          if [[ "$TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          else
+            flags+=(--latest)
+          fi
+          gh release create "$TAG" --repo "$REPOSITORY" "${flags[@]}" release-candidate/*
