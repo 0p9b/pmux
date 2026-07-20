@@ -11,9 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
-	"runtime"
 	"time"
 
 	"github.com/0p9b/pmux/internal/domain/service"

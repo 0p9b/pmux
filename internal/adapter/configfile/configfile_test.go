@@ -34,7 +34,6 @@ unknown-after: 42 # keep tail
 `
 }
 
-
 func testAuthDir(t *testing.T) string {
 	t.Helper()
 	dir := filepath.Join(t.TempDir(), "auth")
