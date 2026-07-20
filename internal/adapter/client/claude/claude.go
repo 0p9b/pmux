@@ -689,10 +689,13 @@ func writeAtomic(path string, body []byte, mode os.FileMode) error {
 }
 
 func syncDir(path string) error {
+	if os.PathSeparator == '\\' {
+		return nil
+	}
 	directory, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer directory.Close()
+	defer func() { _ = directory.Close() }()
 	return directory.Sync()
 }

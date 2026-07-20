@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -537,8 +538,8 @@ func TestClosedFallbackFlagsExactForEveryDefinition(t *testing.T) {
 		{provider: "antigravity", flow: provider.FlowBrowser, want: []string{"-antigravity-login"}},
 		{provider: "kimi", flow: provider.FlowDeviceCode, want: []string{"-kimi-login"}},
 		{provider: "xai", flow: provider.FlowDeviceCode, want: []string{"-xai-login"}},
-		{provider: "vertex", flow: provider.FlowVertexImport, options: FallbackOptions{VertexPath: "/private/vertex.json"}, want: []string{"-vertex-import", "/private/vertex.json"}},
-		{provider: "vertex", flow: provider.FlowVertexImport, options: FallbackOptions{VertexPath: "/private/vertex.json", VertexPrefix: "team"}, want: []string{"-vertex-import", "/private/vertex.json", "-vertex-import-prefix", "team"}},
+		{provider: "vertex", flow: provider.FlowVertexImport, options: FallbackOptions{VertexPath: absTestPath("/private/vertex.json")}, want: []string{"-vertex-import", absTestPath("/private/vertex.json")}},
+		{provider: "vertex", flow: provider.FlowVertexImport, options: FallbackOptions{VertexPath: absTestPath("/private/vertex.json"), VertexPrefix: "team"}, want: []string{"-vertex-import", absTestPath("/private/vertex.json"), "-vertex-import-prefix", "team"}},
 	}
 	for _, test := range tests {
 		flags, err := ClosedFallbackFlags(test.provider, test.flow, test.options)
@@ -761,11 +762,12 @@ func TestVertexManagementFirstAndFallback(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		result, err := authenticator.ImportVertex(context.Background(), VertexImport{Path: "/private/service-account.json", Prefix: "team"})
+		path := absTestPath("/private/service-account.json")
+		result, err := authenticator.ImportVertex(context.Background(), VertexImport{Path: path, Prefix: "team"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Name != "vertex-project.json" || fake.importRequest.Path != "/private/service-account.json" || fake.importRequest.Prefix != "team" || !verifier.verified {
+		if result.Name != "vertex-project.json" || fake.importRequest.Path != path || fake.importRequest.Prefix != "team" || !verifier.verified {
 			t.Fatalf("result=%#v request=%#v verified=%v", result, fake.importRequest, verifier.verified)
 		}
 	})
@@ -778,11 +780,12 @@ func TestVertexManagementFirstAndFallback(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		result, err := authenticator.ImportVertex(context.Background(), VertexImport{Path: "/private/service-account.json", Prefix: "team"})
+		path := absTestPath("/private/service-account.json")
+		result, err := authenticator.ImportVertex(context.Background(), VertexImport{Path: path, Prefix: "team"})
 		if err != nil {
 			t.Fatal(err)
 		}
-		want := []string{"-vertex-import", "/private/service-account.json", "-vertex-import-prefix", "team"}
+		want := []string{"-vertex-import", path, "-vertex-import-prefix", "team"}
 		if !reflect.DeepEqual(fallback.flags, want) || fallback.provider != "vertex" || fallback.flow != provider.FlowVertexImport {
 			t.Fatalf("fallback provider=%q flow=%q flags=%#v", fallback.provider, fallback.flow, fallback.flags)
 		}
@@ -790,4 +793,8 @@ func TestVertexManagementFirstAndFallback(t *testing.T) {
 			t.Fatalf("result=%#v", result)
 		}
 	})
+}
+func absTestPath(path string) string {
+	abs, _ := filepath.Abs(path)
+	return abs
 }
