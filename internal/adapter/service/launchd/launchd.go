@@ -396,13 +396,13 @@ func renderPlist(spec service.ServiceSpec, label string) ([]byte, error) {
 	env[instanceEnvironmentKey] = spec.InstanceID
 	values := []plistEntry{
 		{Key: "Label", String: label},
-		{Key: "ProgramArguments", Array: []string{spec.PMuxPath, "--binary", spec.BinaryPath, "--config", spec.ConfigPath}},
-		{Key: "WorkingDirectory", String: spec.RuntimeDir},
+		{Key: "ProgramArguments", Array: []string{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath)}},
+		{Key: "WorkingDirectory", String: filepath.ToSlash(spec.RuntimeDir)},
 		{Key: "EnvironmentVariables", Dict: env},
 		{Key: "RunAtLoad", Bool: new(true)},
 		{Key: "KeepAlive", BoolDict: map[string]bool{"SuccessfulExit": false}},
-		{Key: "StandardOutPath", String: filepath.Join(spec.LogDir, spec.InstanceID+".out.log")},
-		{Key: "StandardErrorPath", String: filepath.Join(spec.LogDir, spec.InstanceID+".err.log")},
+		{Key: "StandardOutPath", String: filepath.ToSlash(filepath.Join(spec.LogDir, spec.InstanceID+".out.log"))},
+		{Key: "StandardErrorPath", String: filepath.ToSlash(filepath.Join(spec.LogDir, spec.InstanceID+".err.log"))},
 	}
 	var out bytes.Buffer
 	out.WriteString(xml.Header)

@@ -324,8 +324,8 @@ func RenderUnit(spec service.ServiceSpec) ([]byte, error) {
 	out.WriteString("Description=CLIProxyAPI instance " + spec.InstanceID + " (managed by PMux)\n")
 	out.WriteString("After=network-online.target\n\n")
 	out.WriteString("[Service]\nType=simple\n")
-	out.WriteString("WorkingDirectory=" + quote(spec.RuntimeDir) + "\n")
-	out.WriteString("ExecStart=" + quote(spec.PMuxPath) + " --binary " + quote(spec.BinaryPath) + " --config " + quote(spec.ConfigPath) + " --runtime-dir " + quote(spec.RuntimeDir) + "\n")
+	out.WriteString("WorkingDirectory=" + quote(filepath.ToSlash(spec.RuntimeDir)) + "\n")
+	out.WriteString("ExecStart=" + quote(filepath.ToSlash(spec.PMuxPath)) + " --binary " + quote(filepath.ToSlash(spec.BinaryPath)) + " --config " + quote(filepath.ToSlash(spec.ConfigPath)) + " --runtime-dir " + quote(filepath.ToSlash(spec.RuntimeDir)) + "\n")
 	for _, entry := range environment {
 		out.WriteString("Environment=" + quote(entry) + "\n")
 	}
