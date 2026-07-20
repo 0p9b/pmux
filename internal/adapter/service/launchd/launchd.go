@@ -408,7 +408,7 @@ func renderPlist(spec service.ServiceSpec, label string) ([]byte, error) {
 	env[instanceEnvironmentKey] = spec.InstanceID
 	values := []plistEntry{
 		{Key: "Label", String: label},
-		{Key: "ProgramArguments", Array: []string{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath)}},
+		{Key: "ProgramArguments", Array: []string{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath), "--runtime-dir", filepath.ToSlash(spec.RuntimeDir), "--log-dir", filepath.ToSlash(spec.LogDir)}},
 		{Key: "WorkingDirectory", String: filepath.ToSlash(spec.RuntimeDir)},
 		{Key: "EnvironmentVariables", Dict: env},
 		{Key: "RunAtLoad", Bool: new(false)},

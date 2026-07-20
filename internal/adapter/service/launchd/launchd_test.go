@@ -137,7 +137,7 @@ func TestInstallRendersCanonicalSafePlist(t *testing.T) {
 	if !ok {
 		t.Fatalf("ProgramArguments type = %T", root["ProgramArguments"])
 	}
-	wantArgs := []any{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath)}
+	wantArgs := []any{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath), "--runtime-dir", filepath.ToSlash(spec.RuntimeDir), "--log-dir", filepath.ToSlash(spec.LogDir)}
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Fatalf("ProgramArguments = %#v, want %#v", gotArgs, wantArgs)
 	}

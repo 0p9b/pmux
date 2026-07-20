@@ -7,17 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
-	"syscall"
 	"testing"
 	"time"
 
@@ -27,39 +24,45 @@ import (
 
 const releaseE2EEnvironment = "PMUX_RELEASE_E2E"
 
-type e2eCoreConfig struct {
-	Address string `json:"address"`
+const launchdFakeCoreSource = `package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+)
+
+type config struct {
+	Address string ` + "`json:\"address\"`" + `
 }
 
-// TestMain also supplies the two real executable boundaries exercised by the
-// LaunchAgent: the PMux service host and the fake CLIProxyAPI core. It handles
-// them before the testing package parses flags, so launchd invokes ordinary
-// executable/argument vectors rather than a shell fixture.
-func TestMain(m *testing.M) {
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "--binary":
-			if len(os.Args) != 5 || os.Args[3] != "--config" {
-				_, _ = fmt.Fprintln(os.Stderr, "invalid fake service-host arguments")
-				os.Exit(2)
-			}
-			if err := syscall.Exec(os.Args[2], []string{os.Args[2], "--fake-core", "--config", os.Args[4]}, os.Environ()); err != nil {
-				_, _ = fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-		case "--fake-core":
-			if len(os.Args) != 4 || os.Args[2] != "--config" {
-				_, _ = fmt.Fprintln(os.Stderr, "invalid fake core arguments")
-				os.Exit(2)
-			}
-			if err := runE2ECore(os.Args[3]); err != nil {
-				_, _ = fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
+func main() {
+	if len(os.Args) != 3 || os.Args[1] != "-config" {
+		panic("usage: fake-core -config /absolute/path")
 	}
-	os.Exit(m.Run())
+	body, err := os.ReadFile(os.Args[2])
+	if err != nil {
+		panic(err)
+	}
+	var cfg config
+	if err := json.Unmarshal(body, &cfg); err != nil {
+		panic(err)
+	}
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-CPA-VERSION", "e2e-core")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	fmt.Fprintln(os.Stdout, "fake core started")
+	if err := http.ListenAndServe(cfg.Address, nil); err != nil {
+		panic(err)
+	}
+}
+`
+
+type e2eCoreConfig struct {
+	Address string `json:"address"`
 }
 
 func TestLaunchAgentReleaseE2E(t *testing.T) {
@@ -70,18 +73,19 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	root := t.TempDir()
+	repoRoot := repositoryRootFromCaller(t)
 	instanceID := "release-e2e-" + strconv.Itoa(os.Getpid()) + "-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	label := service.Identity(service.BackendLaunchd, instanceID)
 	address := reserveAddress(t)
 
-	self, err := os.Executable()
-	if err != nil {
-		t.Fatalf("resolve test executable: %v", err)
-	}
 	hostPath := filepath.Join(root, "pmux-service-host")
 	corePath := filepath.Join(root, "fake-core")
-	copyExecutable(t, self, hostPath)
-	copyExecutable(t, self, corePath)
+	buildGoBinary(t, ctx, repoRoot, hostPath, "./cmd/pmux")
+	fakeSource := filepath.Join(root, "fake-core.go")
+	if err := os.WriteFile(fakeSource, []byte(launchdFakeCoreSource), 0o600); err != nil {
+		t.Fatalf("write fake core source: %v", err)
+	}
+	buildGoBinary(t, ctx, root, corePath, fakeSource)
 	adHocSign(t, hostPath)
 	adHocSign(t, corePath)
 
@@ -90,6 +94,11 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 
 	runtimeDir := filepath.Join(root, "instance", "runtime")
 	logDir := filepath.Join(root, "state", "logs")
+	for _, dir := range []string{runtimeDir, logDir} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatalf("create %s: %v", dir, err)
+		}
+	}
 	home := mustHome(t)
 	plistDir := filepath.Join(home, "Library", "LaunchAgents")
 	if err := os.MkdirAll(plistDir, 0o700); err != nil {
@@ -191,41 +200,6 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	}
 }
 
-func runE2ECore(configPath string) error {
-	body, err := os.ReadFile(configPath)
-	if err != nil {
-		return err
-	}
-	var cfg e2eCoreConfig
-	if err := json.Unmarshal(body, &cfg); err != nil {
-		return err
-	}
-	listener, err := net.Listen("tcp", cfg.Address)
-	if err != nil {
-		return err
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("X-CPA-VERSION", "e2e-core")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second}
-	stopped := make(chan os.Signal, 1)
-	signal.Notify(stopped, syscall.SIGTERM, os.Interrupt)
-	defer signal.Stop(stopped)
-	go func() {
-		<-stopped
-		_ = server.Close()
-	}()
-	_, _ = fmt.Fprintln(os.Stdout, "fake core started")
-	err = server.Serve(listener)
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-	return err
-}
-
 func assertReleasePlist(t *testing.T, path string, spec service.ServiceSpec, label string) {
 	t.Helper()
 	if !filepath.IsAbs(path) {
@@ -243,7 +217,10 @@ func assertReleasePlist(t *testing.T, path string, spec service.ServiceSpec, lab
 	if err != nil {
 		t.Fatalf("parse plist: %v", err)
 	}
-	wantArgs := []any{spec.PMuxPath, "--binary", spec.BinaryPath, "--config", spec.ConfigPath}
+	wantArgs := []any{
+		spec.PMuxPath, "--binary", spec.BinaryPath, "--config", spec.ConfigPath,
+		"--runtime-dir", spec.RuntimeDir, "--log-dir", spec.LogDir,
+	}
 	if got := root["ProgramArguments"]; !reflect.DeepEqual(got, wantArgs) {
 		t.Fatalf("ProgramArguments = %#v, want %#v", got, wantArgs)
 	}
@@ -273,30 +250,18 @@ func reserveAddress(t *testing.T) string {
 	return address
 }
 
-func copyExecutable(t *testing.T, source, destination string) {
+func buildGoBinary(t *testing.T, ctx context.Context, workingDirectory, output string, packageOrFile ...string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(destination), 0o700); err != nil {
-		t.Fatal(err)
+	if len(packageOrFile) == 0 {
+		t.Fatal("buildGoBinary requires a package or file")
 	}
-	input, err := os.Open(source)
+	args := []string{"build", "-trimpath", "-o", output}
+	args = append(args, packageOrFile...)
+	cmd := exec.CommandContext(ctx, "go", args...)
+	cmd.Dir = workingDirectory
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatal(err)
-	}
-	defer input.Close()
-	output, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o700)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := io.Copy(output, input); err != nil {
-		_ = output.Close()
-		t.Fatal(err)
-	}
-	if err := output.Sync(); err != nil {
-		_ = output.Close()
-		t.Fatal(err)
-	}
-	if err := output.Close(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("go build %v: %v\n%s", packageOrFile, err, out)
 	}
 }
 
@@ -329,6 +294,15 @@ func mustHome(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return home
+}
+
+func repositoryRootFromCaller(t *testing.T) string {
+	t.Helper()
+	_, sourceFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller could not locate repository source")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", "..", "..", ".."))
 }
 
 func containsBytes(body, needle []byte) bool {
