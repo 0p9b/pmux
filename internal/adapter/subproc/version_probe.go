@@ -142,7 +142,6 @@ func temporaryProxyKey() (string, error) {
 	return "sk-" + hex.EncodeToString(bytes), nil
 }
 
-
 func validateProbeExecutable(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
