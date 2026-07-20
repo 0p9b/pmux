@@ -77,6 +77,36 @@ jobs:
         run: |
           set -euo pipefail
           launchctl print "gui/$(id -u)" >/dev/null
+      - name: Probe macOS launchd bootstrap capability
+        if: startsWith(matrix.target, 'darwin-')
+        shell: bash
+        run: |
+          set -uo pipefail
+          probe="$HOME/Library/LaunchAgents/dev.pmux.bootstrap-probe.plist"
+          cat >"$probe" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>Label</key><string>dev.pmux.bootstrap-probe</string>
+            <key>ProgramArguments</key><array><string>/bin/sleep</string><string>30</string></array>
+            <key>RunAtLoad</key><false/>
+          </dict></plist>
+          PLIST
+          plutil -lint "$probe"
+          for domain in "gui/$(id -u)" "user/$(id -u)"; do
+            launchctl bootout "$domain/dev.pmux.bootstrap-probe" 2>/dev/null
+            echo "--- bootstrap $domain ---"
+            if out=$(launchctl bootstrap "$domain" "$probe" 2>&1); then
+              echo "bootstrap $domain: OK"
+              launchctl print "$domain/dev.pmux.bootstrap-probe" | head -5
+              launchctl kickstart "$domain/dev.pmux.bootstrap-probe" && echo "kickstart $domain: OK"
+              launchctl bootout "$domain/dev.pmux.bootstrap-probe"
+            else
+              echo "bootstrap $domain: FAILED: $out"
+            fi
+          done
+          rm -f "$probe"
+          exit 0
       - name: Ensure Task Scheduler service is running
         if: matrix.target == 'windows-amd64'
         shell: pwsh

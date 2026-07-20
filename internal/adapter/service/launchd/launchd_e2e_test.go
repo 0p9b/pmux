@@ -338,6 +338,19 @@ func dumpLaunchdDiagnostics(t *testing.T, manager *Manager, label string) {
 		out, err := exec.Command("launchctl", "print", domain+"/"+label).CombinedOutput()
 		t.Logf("launchctl print %s/%s: err=%v\n%s", domain, label, err, out)
 	}
+	if out, err := exec.Command("log", "show", "--last", "3m", "--style", "compact",
+		"--predicate", `process == "launchd"`).CombinedOutput(); err == nil {
+		kept := []string{}
+		for _, line := range strings.Split(string(out), "\n") {
+			if strings.Contains(line, label) || strings.Contains(line, "pmux") {
+				kept = append(kept, line)
+			}
+		}
+		if len(kept) > 40 {
+			kept = kept[len(kept)-40:]
+		}
+		t.Logf("launchd log excerpts:\n%s", strings.Join(kept, "\n"))
+	}
 	if out, err := exec.Command("launchctl", "list").CombinedOutput(); err == nil {
 		for _, line := range strings.Split(string(out), "\n") {
 			if strings.Contains(line, "pmux") {
