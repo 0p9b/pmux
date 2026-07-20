@@ -4,11 +4,13 @@ package platform
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"unsafe"
 
 	"github.com/0p9b/pmux/internal/domain/service"
@@ -99,19 +101,18 @@ func (p *nativePlatform) SecurePermissions(path string, isDir bool) error {
 	if err := validateWindowsPathType(path, isDir); err != nil {
 		return err
 	}
-	userSID, systemSID, err := privateSIDs()
+	userSID, _, err := privateSIDs()
 	if err != nil {
 		return permissionError(err, path, "could not resolve private Windows security principals")
 	}
-	inheritance := uint32(windows.NO_INHERITANCE)
+	inheritance := ""
 	if isDir {
-		inheritance = windows.OBJECT_INHERIT_ACE | windows.CONTAINER_INHERIT_ACE
+		inheritance = "OICI"
 	}
-	entries := []windows.EXPLICIT_ACCESS{
-		privateAccessEntry(userSID, inheritance),
-		privateAccessEntry(systemSID, inheritance),
-	}
-	dacl, err := windows.ACLFromEntries(entries, nil)
+	// D:P builds a protected (inheritance-disabled) DACL granting Full Access
+	// only to SYSTEM and the current user.
+	sddl := "D:P(A;" + inheritance + ";FA;;;SY)(A;" + inheritance + ";FA;;;" + userSID.String() + ")"
+	dacl, err := daclFromSDDL(sddl)
 	if err != nil {
 		return permissionError(err, path, "could not create a private Windows access list")
 	}
@@ -120,6 +121,29 @@ func (p *nativePlatform) SecurePermissions(path string, isDir bool) error {
 		return permissionError(err, path, "could not apply a private Windows access list")
 	}
 	return p.VerifySecurePermissions(path, isDir)
+}
+
+var procConvertSDDL = windows.NewLazySystemDLL("advapi32.dll").NewProc("ConvertStringSecurityDescriptorToSecurityDescriptorW")
+
+func daclFromSDDL(sddl string) (*windows.ACL, error) {
+	sddlPtr, err := windows.UTF16PtrFromString(sddl)
+	if err != nil {
+		return nil, err
+	}
+	var sd *windows.SECURITY_DESCRIPTOR
+	r1, _, callErr := syscall.SyscallN(procConvertSDDL.Addr(), uintptr(unsafe.Pointer(sddlPtr)), 1, uintptr(unsafe.Pointer(&sd)), 0)
+	if r1 == 0 {
+		if callErr != windows.ERROR_SUCCESS {
+			return nil, callErr
+		}
+		return nil, errors.New("ConvertStringSecurityDescriptorToSecurityDescriptorW failed")
+	}
+	defer func() { _, _ = windows.LocalFree(windows.Handle(unsafe.Pointer(sd))) }()
+	dacl, _, err := sd.DACL()
+	if err != nil {
+		return nil, err
+	}
+	return dacl, nil
 }
 
 func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error {
@@ -190,19 +214,6 @@ func (p *nativePlatform) VerifySecurePermissions(path string, isDir bool) error 
 	return nil
 }
 
-func privateAccessEntry(sid *windows.SID, inheritance uint32) windows.EXPLICIT_ACCESS {
-	return windows.EXPLICIT_ACCESS{
-		AccessPermissions: windows.GENERIC_ALL,
-		AccessMode:        windows.SET_ACCESS,
-		Inheritance:       inheritance,
-		Trustee: windows.TRUSTEE{
-			TrusteeForm:  windows.TRUSTEE_IS_SID,
-			TrusteeType:  windows.TRUSTEE_IS_USER,
-			TrusteeValue: windows.TrusteeValueFromSID(sid),
-		},
-	}
-}
-
 func privateSIDs() (user, system *windows.SID, err error) {
 	token, err := windows.OpenCurrentProcessToken()
 	if err != nil {
@@ -252,7 +263,7 @@ func insecureWindowsPermissions(path, explanation string) *pmuxerr.Error {
 	return &pmuxerr.Error{
 		Code:        pmuxerr.ConfigInsecurePermissions,
 		Class:       pmuxerr.Environment,
-		Message:     fmt.Sprintf("private path %q does not have the required protected Windows access list", path),
+		Message:     fmt.Sprintf("private path %q does not have the required protected Windows access list: %s", path, explanation),
 		Explanation: explanation,
 		Evidence:    []string{"path: " + path},
 	}

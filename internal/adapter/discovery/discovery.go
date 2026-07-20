@@ -283,6 +283,11 @@ func resolveProcessPath(path, workingDir string) string {
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path)
 	}
+	// Observed evidence can describe a foreign (Unix) process layout even when
+	// PMux itself runs on Windows; preserve leading-slash paths verbatim.
+	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, `\\`) {
+		return cleanObservedPath(path)
+	}
 	if workingDir != "" {
 		return filepath.Clean(filepath.Join(workingDir, path))
 	}

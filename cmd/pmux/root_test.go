@@ -289,7 +289,7 @@ func TestVersionReportingPaths(t *testing.T) {
 		if code != 0 {
 			t.Fatalf("exit=%d", code)
 		}
-		for _, want := range []string{"PMux 1.2.3", "Platform: linux/amd64", "Config root: /home/tester/.config/pmux", "CLIProxyAPI: unknown", "Commit: abc123"} {
+		for _, want := range []string{"PMux 1.2.3", "Platform: linux/amd64", "Config root: " + filepath.Join("/home/tester", ".config", "pmux"), "CLIProxyAPI: unknown", "Commit: abc123"} {
 			if !strings.Contains(out.String(), want) {
 				t.Errorf("version output missing %q: %s", want, out)
 			}
