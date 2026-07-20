@@ -120,7 +120,7 @@ func AssetName(version string, target domain.Target) (string, error) {
 	if target.OS == "windows" && target.Arch != "amd64" {
 		return "", unsupportedTarget(target)
 	}
-	return fmt.Sprintf("CLIProxyAPI_%s_%s_%s.%s", version, target.OS, releaseArchToken(target.Arch), extension)
+	return fmt.Sprintf("CLIProxyAPI_%s_%s_%s.%s", version, target.OS, releaseArchToken(target.Arch), extension), nil
 }
 
 func unsupportedTarget(target domain.Target) error {
