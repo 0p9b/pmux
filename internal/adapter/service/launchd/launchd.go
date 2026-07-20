@@ -485,6 +485,9 @@ func launchctlFailure(err error, out []byte) error {
 }
 
 func launchctlError(err error, message string) error {
+	if err != nil {
+		message = message + ": " + err.Error()
+	}
 	return wrap(err, pmuxerr.ServiceStartFailed, pmuxerr.Environment, message)
 }
 
