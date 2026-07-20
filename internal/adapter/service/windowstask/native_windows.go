@@ -55,12 +55,12 @@ func (nativeCOM) GetTask(ctx context.Context, name string) (RegisteredTask, erro
 		defer task.Release()
 		definition, err := readDefinition(task, name)
 		if err != nil {
-			return err
+			return fmt.Errorf("read task definition %s: %w", name, err)
 		}
 		out.Definition = definition
 		state, err := intProperty(task, "State")
 		if err != nil {
-			return err
+			return fmt.Errorf("read task state %s: %w", name, err)
 		}
 		out.State = taskState(state)
 		last, err := intProperty(task, "LastTaskResult")
@@ -374,7 +374,11 @@ func propertyValue(object *ole.IDispatch, name string) (*ole.VARIANT, error) {
 	if err == nil {
 		return value, nil
 	}
-	return oleutil.CallMethod(object, name)
+	methodValue, methodErr := oleutil.CallMethod(object, name)
+	if methodErr == nil {
+		return methodValue, nil
+	}
+	return nil, fmt.Errorf("Task Scheduler property %s: get: %v; method: %v", name, err, methodErr)
 }
 
 func getDispatch(object *ole.IDispatch, name string) (*ole.IDispatch, error) {
