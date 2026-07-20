@@ -74,7 +74,7 @@ func (nativeCOM) GetTask(ctx context.Context, name string) (RegisteredTask, erro
 				defer instances.Release()
 				count, _ := intProperty(instances, "Count")
 				if count > 0 {
-					itemValue, itemErr := oleutil.CallMethod(instances, "Item", 1)
+					itemValue, itemErr := collectionItem(instances, 1)
 					if itemErr == nil {
 						item := itemValue.ToIDispatch()
 						if item != nil {
@@ -344,10 +344,10 @@ func readDefinition(task *ole.IDispatch, name string) (TaskDefinition, error) {
 		actions.Release()
 		return out, errors.New("Task Scheduler definition has no action")
 	}
-	value, err := oleutil.CallMethod(actions, "Item", 1)
+	value, err := collectionItem(actions, 1)
 	actions.Release()
 	if err != nil {
-		return out, err
+		return out, fmt.Errorf("Task Scheduler action item: %w", err)
 	}
 	action := value.ToIDispatch()
 	if action == nil {
@@ -362,6 +362,21 @@ func readDefinition(task *ole.IDispatch, name string) (TaskDefinition, error) {
 	}
 	out.Exec.WorkingDirectory, _ = stringProperty(action, "WorkingDirectory")
 	return out, nil
+}
+
+// collectionItem reads a 1-based collection element. Depending on the Windows
+// build, Task Scheduler exposes Item as a parameterized property get or as a
+// method, so both invocation styles are tried.
+func collectionItem(collection *ole.IDispatch, index int) (*ole.VARIANT, error) {
+	value, err := oleutil.GetProperty(collection, "Item", index)
+	if err == nil {
+		return value, nil
+	}
+	methodValue, methodErr := oleutil.CallMethod(collection, "Item", index)
+	if methodErr == nil {
+		return methodValue, nil
+	}
+	return nil, fmt.Errorf("get: %v; method: %v", err, methodErr)
 }
 
 // propertyValue reads a dispatch property, falling back to a method-style
