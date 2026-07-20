@@ -67,6 +67,7 @@ func TestManagedBinaryFactVerifiesRecordedSHA256(t *testing.T) {
 func TestAbsoluteConfigFactUsesEffectiveServiceDefinition(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HOME", root)
+	t.Setenv("USERPROFILE", root)
 	installation := state.Installation{
 		ID: "default", ServiceBackend: string(service.BackendSystemdUser),
 		ConfigPath: filepath.Join(root, "config.yaml"), RuntimeDir: filepath.Join(root, "runtime"),

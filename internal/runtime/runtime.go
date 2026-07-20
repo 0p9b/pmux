@@ -1616,7 +1616,7 @@ func (s *doctorSource) Permissions(context.Context) (adapterdoctor.PermissionsFa
 	}
 	if entries, err := os.ReadDir(s.installation.AuthDir); err == nil {
 		for _, entry := range entries {
-			targets = append(targets, adapterdoctor.PermissionTarget{Path: filepath.Join(s.installation.AuthDir, entry.Name()), Auth: true})
+			targets = append(targets, adapterdoctor.PermissionTarget{Path: filepath.Join(s.installation.AuthDir, entry.Name()), Auth: true, RedactName: true})
 		}
 	}
 	fact := adapterdoctor.PermissionsFact{}

@@ -94,6 +94,9 @@ type PermissionTarget struct {
 	Auth   bool
 	Secure bool
 	Detail string
+	// RedactName hides the final path element in evidence so auth-file names
+	// never leak into reports or diagnostic bundles.
+	RedactName bool
 }
 
 type PermissionsFact struct {
@@ -747,7 +750,11 @@ func permissionResult(f PermissionsFact, auth bool) domaindoctor.CheckResult {
 	var insecure []string
 	for _, target := range targets {
 		if !target.Secure {
-			insecure = append(insecure, target.Path+": "+target.Detail)
+			path := target.Path
+			if target.RedactName {
+				path = filepath.Join(filepath.Dir(path), "<name redacted>")
+			}
+			insecure = append(insecure, path+": "+target.Detail)
 		}
 	}
 	if len(insecure) > 0 {
