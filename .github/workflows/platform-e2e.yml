@@ -81,7 +81,7 @@ jobs:
         if: startsWith(matrix.target, 'darwin-')
         shell: bash
         run: |
-          set -uo pipefail
+          set +e
           probe="$HOME/Library/LaunchAgents/dev.pmux.bootstrap-probe.plist"
           cat >"$probe" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -94,13 +94,13 @@ jobs:
           PLIST
           plutil -lint "$probe"
           for domain in "gui/$(id -u)" "user/$(id -u)"; do
-            launchctl bootout "$domain/dev.pmux.bootstrap-probe" 2>/dev/null
+            launchctl bootout "$domain/dev.pmux.bootstrap-probe" 2>/dev/null || true
             echo "--- bootstrap $domain ---"
             if out=$(launchctl bootstrap "$domain" "$probe" 2>&1); then
               echo "bootstrap $domain: OK"
               launchctl print "$domain/dev.pmux.bootstrap-probe" | head -5
               launchctl kickstart "$domain/dev.pmux.bootstrap-probe" && echo "kickstart $domain: OK"
-              launchctl bootout "$domain/dev.pmux.bootstrap-probe"
+              launchctl bootout "$domain/dev.pmux.bootstrap-probe" || true
             else
               echo "bootstrap $domain: FAILED: $out"
             fi
