@@ -573,8 +573,10 @@ func opts(values ...any) map[string]any {
 		panic("opts requires key/value pairs")
 	}
 	out := make(map[string]any, len(values)/2)
-	for i := 0; i < len(values); i += 2 {
-		out[values[i].(string)] = values[i+1]
+	for i := 0; i+1 < len(values); i += 2 {
+		if key, ok := values[i].(string); ok {
+			out[key] = values[i+1]
+		}
 	}
 	return out
 }

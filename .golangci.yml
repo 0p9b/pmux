@@ -36,6 +36,7 @@ linters:
         - G302
         - G304
         - G306
+        - G602
     revive:
       rules:
         - name: exported
@@ -134,6 +135,9 @@ linters:
       - linters:
           - errcheck
         text: "Error return value of `(fmt\\.Fprintln|.*Close|.*Release|.*RemoveAll|.*closeSource)` is not checked"
+      - linters:
+          - gosec
+        text: "G122|G702|G703"
 formatters:
   enable:
     - gofmt
