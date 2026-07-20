@@ -81,14 +81,19 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 	defer cancel()
 	root := t.TempDir()
 	repoRoot := repositoryRootFromCaller(t)
+	home := mustHome(t)
+	stableRoot := filepath.Join(home, "Library", "Application Support", "pmux-e2e", strconv.Itoa(os.Getpid()))
+	if err := os.MkdirAll(stableRoot, 0o700); err != nil {
+		t.Fatalf("prepare stable e2e root: %v", err)
+	}
 	instanceID := "release-e2e-" + strconv.Itoa(os.Getpid()) + "-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	label := service.Identity(service.BackendLaunchd, instanceID)
 	address := reserveAddress(t)
 
-	hostPath := filepath.Join(root, "pmux-service-host")
-	corePath := filepath.Join(root, "fake-core")
+	hostPath := filepath.Join(stableRoot, "pmux-service-host")
+	corePath := filepath.Join(stableRoot, "fake-core")
 	buildGoBinary(t, ctx, repoRoot, hostPath, "./cmd/pmux")
-	fakeSource := filepath.Join(root, "fake-core.go")
+	fakeSource := filepath.Join(stableRoot, "fake-core.go")
 	if err := os.WriteFile(fakeSource, []byte(launchdFakeCoreSource), 0o600); err != nil {
 		t.Fatalf("write fake core source: %v", err)
 	}
@@ -106,7 +111,6 @@ func TestLaunchAgentReleaseE2E(t *testing.T) {
 			t.Fatalf("create %s: %v", dir, err)
 		}
 	}
-	home := mustHome(t)
 	plistDir := filepath.Join(home, "Library", "LaunchAgents")
 	if err := os.MkdirAll(plistDir, 0o700); err != nil {
 		t.Fatalf("prepare LaunchAgents directory: %v", err)

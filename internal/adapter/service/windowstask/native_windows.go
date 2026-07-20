@@ -276,7 +276,7 @@ func withTaskFolder(ctx context.Context, fn func(*ole.IDispatch, *ole.IDispatch)
 	defer ole.CoUninitialize()
 	var unknown *ole.IUnknown
 	var err error
-	for _, progID := range []string{"TaskScheduler.TaskScheduler", "Schedule.Service.1", "Schedule.Service"} {
+	for _, progID := range []string{"Schedule.Service.1", "Schedule.Service", "TaskScheduler.TaskScheduler"} {
 		unknown, err = oleutil.CreateObject(progID)
 		if err == nil && unknown != nil {
 			break
@@ -323,22 +323,18 @@ func readDefinition(task *ole.IDispatch, name string) (TaskDefinition, error) {
 	out.Description, _ = stringProperty(registration, "Description")
 	out.Author, _ = stringProperty(registration, "Author")
 	registration.Release()
-	settings, err := getDispatch(definition, "Settings")
-	if err != nil {
-		return out, err
+	if settings, err := getDispatch(definition, "Settings"); err == nil {
+		out.Enabled, _ = boolProperty(settings, "Enabled")
+		out.RestartCount, _ = intProperty(settings, "RestartCount")
+		interval, _ := stringProperty(settings, "RestartInterval")
+		out.RestartInterval = parseISODuration(interval)
+		settings.Release()
 	}
-	out.Enabled, _ = boolProperty(settings, "Enabled")
-	out.RestartCount, _ = intProperty(settings, "RestartCount")
-	interval, _ := stringProperty(settings, "RestartInterval")
-	out.RestartInterval = parseISODuration(interval)
-	settings.Release()
-	triggers, err := getDispatch(definition, "Triggers")
-	if err != nil {
-		return out, err
+	if triggers, err := getDispatch(definition, "Triggers"); err == nil {
+		count, _ := intProperty(triggers, "Count")
+		out.LogonTrigger = count > 0
+		triggers.Release()
 	}
-	count, _ := intProperty(triggers, "Count")
-	out.LogonTrigger = count > 0
-	triggers.Release()
 	actions, err := getDispatch(definition, "Actions")
 	if err != nil {
 		return out, err
