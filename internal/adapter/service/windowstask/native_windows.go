@@ -274,7 +274,10 @@ func withTaskFolder(ctx context.Context, fn func(*ole.IDispatch, *ole.IDispatch)
 		}
 	}
 	defer ole.CoUninitialize()
-	unknown, err := oleutil.CreateObject("Schedule.Service")
+	unknown, err := oleutil.CreateObject("Schedule.Service.1")
+	if err != nil {
+		unknown, err = oleutil.CreateObject("Schedule.Service")
+	}
 	if err != nil {
 		return err
 	}

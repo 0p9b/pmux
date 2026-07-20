@@ -157,7 +157,7 @@ func (m *Manager) Start(ctx context.Context) error {
 				Explanation: "The PMux-owned task was registered, but Task Scheduler 2.0 COM rejected its start request.",
 				Evidence:    []string{"task: " + name},
 				Repair:      []string{"Run `pmux doctor` to inspect the scheduled task and PMux-managed logs."},
-				Cause:       err,
+				Cause:       enrichCOMError(err),
 			}
 		}
 	}
@@ -174,7 +174,7 @@ func (m *Manager) Start(ctx context.Context) error {
 			Explanation: "The Windows Scheduled Task is active, but the canonical /healthz gate did not pass.",
 			Evidence:    []string{"task: " + name},
 			Repair:      []string{"Run `pmux doctor` and inspect `pmux service logs`."},
-			Cause:       err,
+			Cause:       enrichCOMError(err),
 		}
 	}
 	m.mu.Lock()
@@ -307,7 +307,7 @@ func (m *Manager) verifyOne(path string, isDir bool, operation string) error {
 			Explanation: "PMux requires inheritance-disabled DACLs granting access only to the current user and SYSTEM.",
 			Evidence:    []string{"path: " + path},
 			Repair:      []string{"Run `pmux doctor` to repair and verify private Windows permissions."},
-			Cause:       err,
+			Cause:       enrichCOMError(err),
 		}
 	}
 	return nil
@@ -451,6 +451,6 @@ func backendError(err error, message string) error {
 		Message:     message,
 		Explanation: "The Task Scheduler 2.0 COM operation did not complete.",
 		Repair:      []string{"Run `pmux doctor` to inspect Windows Task Scheduler availability and service state."},
-		Cause:       err,
+		Cause:       enrichCOMError(err),
 	}
 }

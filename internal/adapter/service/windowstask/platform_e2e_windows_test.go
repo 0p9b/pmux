@@ -194,7 +194,13 @@ func TestPlatformE2EWindowsScheduledTaskLifecycle(t *testing.T) {
 func requireWindowsReleasePrerequisite(t *testing.T, operation string, err error) {
 	t.Helper()
 	if os.Getenv("PMUX_RELEASE_E2E") == "1" {
-		t.Fatalf("release prerequisite %s failed: %v", operation, err)
+		var detail string
+		if cause := errors.Unwrap(err); cause != nil {
+			detail = fmt.Sprintf("%v (cause: %v)", err, cause)
+		} else {
+			detail = err.Error()
+		}
+		t.Fatalf("release prerequisite %s failed: %s", operation, detail)
 	}
 	t.Skipf("Windows platform E2E prerequisite unavailable (%s): %v", operation, err)
 }
