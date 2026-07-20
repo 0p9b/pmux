@@ -328,6 +328,9 @@ func repositoryRootFromCaller(t *testing.T) string {
 
 func dumpLaunchdDiagnostics(t *testing.T, manager *Manager, label string) {
 	t.Helper()
+	if body, err := os.ReadFile(manager.plistPath); err == nil {
+		t.Logf("plist body:\n%s", body)
+	}
 	if out, err := exec.Command("plutil", "-lint", manager.plistPath).CombinedOutput(); err != nil {
 		t.Logf("plutil -lint: %v\n%s", err, out)
 	} else {
