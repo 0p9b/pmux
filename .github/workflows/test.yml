@@ -28,10 +28,10 @@ jobs:
             runner: ubuntu-24.04-arm
             toolchain: minimum
           - target: darwin-amd64
-            runner: macos-13
+            runner: macos-15-intel
             toolchain: stable
           - target: darwin-amd64
-            runner: macos-13
+            runner: macos-15-intel
             toolchain: minimum
           - target: darwin-arm64
             runner: macos-14

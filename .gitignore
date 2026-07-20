@@ -21,3 +21,6 @@ Thumbs.db
 
 # Local PMux runtime artifacts
 pmux-bundle-*.tar.gz
+
+# Local references
+REFERENCES.md
