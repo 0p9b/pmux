@@ -42,5 +42,6 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $distro = 'Ubuntu-24.04'
-          $repo = (wsl -d $distro wslpath -u "$env:GITHUB_WORKSPACE").Trim()
+          $winPath = $env:GITHUB_WORKSPACE.Replace('\', '/')
+          $repo = (wsl -d $distro -- wslpath -u "$winPath").Trim()
           wsl -d $distro bash -lc "set -euo pipefail; cd '$repo' && bash .github/scripts/wsl-acceptance.sh"

@@ -150,7 +150,7 @@ func TestInstallRendersCanonicalSafePlist(t *testing.T) {
 	if got := stringValue(root["StandardErrorPath"]); got != filepath.Join(filepath.ToSlash(spec.LogDir), "test-one.err.log") {
 		t.Fatalf("StandardErrorPath = %q", got)
 	}
-	if got, ok := root["RunAtLoad"].(bool); !ok || !got {
+	if got, ok := root["RunAtLoad"].(bool); !ok || got {
 		t.Fatalf("RunAtLoad = %#v", root["RunAtLoad"])
 	}
 	keepAlive, ok := root["KeepAlive"].(map[string]any)
@@ -268,6 +268,10 @@ func TestLifecycleTransitionsAndLaunchctlArgumentBoundaries(t *testing.T) {
 	assertCall(t, runner.calls, commandCall{
 		name: "/bin/launchctl",
 		args: []string{"bootstrap", "gui/501", manager.plistPath},
+	})
+	assertCall(t, runner.calls, commandCall{
+		name: "/bin/launchctl",
+		args: []string{"kickstart", "gui/501/dev.pmux.cliproxyapi.test-one"},
 	})
 	status, err = manager.Status(ctx)
 	if err != nil || status.State != service.ServiceRunning || status.PID != 4242 {

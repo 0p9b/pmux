@@ -175,8 +175,13 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 	if status.State != service.ServiceRunning {
-		if _, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
-			return launchctlError(err, "could not bootstrap the LaunchAgent")
+		if status.State == service.ServiceNotInstalled {
+			if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
+				return launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
+			}
+		}
+		if out, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", m.target()); err != nil {
+			return launchctlError(launchctlFailure(err, out), "could not start the LaunchAgent")
 		}
 	}
 	if _, err := m.health.WaitReady(ctx); err != nil {
@@ -216,11 +221,18 @@ func (m *Manager) Restart(ctx context.Context) (service.ServiceStatus, error) {
 		return service.ServiceStatus{}, err
 	}
 	if status.State == service.ServiceRunning {
-		if _, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", "-k", m.target()); err != nil {
-			return service.ServiceStatus{}, launchctlError(err, "could not restart the LaunchAgent")
+		if out, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", "-k", m.target()); err != nil {
+			return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not restart the LaunchAgent")
 		}
-	} else if _, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
-		return service.ServiceStatus{}, launchctlError(err, "could not bootstrap the LaunchAgent")
+	} else {
+		if status.State == service.ServiceNotInstalled {
+			if out, err := m.runner.Run(ctx, "/bin/launchctl", "bootstrap", m.domain(), m.plistPath); err != nil {
+				return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not bootstrap the LaunchAgent")
+			}
+		}
+		if out, err := m.runner.Run(ctx, "/bin/launchctl", "kickstart", m.target()); err != nil {
+			return service.ServiceStatus{}, launchctlError(launchctlFailure(err, out), "could not start the LaunchAgent")
+		}
 	}
 	healthResult, err := m.health.WaitReady(ctx)
 	if err != nil {
@@ -399,7 +411,7 @@ func renderPlist(spec service.ServiceSpec, label string) ([]byte, error) {
 		{Key: "ProgramArguments", Array: []string{filepath.ToSlash(spec.PMuxPath), "--binary", filepath.ToSlash(spec.BinaryPath), "--config", filepath.ToSlash(spec.ConfigPath)}},
 		{Key: "WorkingDirectory", String: filepath.ToSlash(spec.RuntimeDir)},
 		{Key: "EnvironmentVariables", Dict: env},
-		{Key: "RunAtLoad", Bool: new(true)},
+		{Key: "RunAtLoad", Bool: new(false)},
 		{Key: "KeepAlive", BoolDict: map[string]bool{"SuccessfulExit": false}},
 		{Key: "StandardOutPath", String: filepath.ToSlash(filepath.Join(spec.LogDir, spec.InstanceID+".out.log"))},
 		{Key: "StandardErrorPath", String: filepath.ToSlash(filepath.Join(spec.LogDir, spec.InstanceID+".err.log"))},
@@ -454,6 +466,14 @@ func parsePID(out []byte) int {
 	}
 	pid, _ := strconv.Atoi(string(match[1]))
 	return pid
+}
+
+func launchctlFailure(err error, out []byte) error {
+	detail := strings.TrimSpace(string(out))
+	if detail == "" {
+		return err
+	}
+	return fmt.Errorf("%w: %s", err, detail)
 }
 
 func launchctlError(err error, message string) error {

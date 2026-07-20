@@ -268,8 +268,10 @@ func withTaskFolder(ctx context.Context, fn func(*ole.IDispatch, *ole.IDispatch)
 	}
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	if err := ole.CoInitialize(0); err != nil {
-		return err
+	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
+		if oleErr, ok := err.(*ole.OleError); !ok || oleErr.Code() != 0x80010106 {
+			return err
+		}
 	}
 	defer ole.CoUninitialize()
 	unknown, err := oleutil.CreateObject("Schedule.Service")
@@ -422,6 +424,14 @@ func taskState(value int) TaskState {
 		return TaskStateUnknown
 	}
 }
+func comFailure(err error) error {
+	var oleErr *ole.OleError
+	if errors.As(err, &oleErr) {
+		return fmt.Errorf("HRESULT=0x%X: %w", uint32(oleErr.Code()), err)
+	}
+	return err
+}
+
 func taskMissing(err error) bool {
 	var oleErr *ole.OleError
 	if !errors.As(err, &oleErr) {
