@@ -12,6 +12,7 @@ pmux providers login <provider> [flags]
       --api-key-file string      read an API key from a private file
       --api-key-stdin            read an API key from standard input
       --callback-url-stdin       read a callback URL from standard input
+      --field stringArray        non-secret provider field as key=value (repeatable, e.g. --field base-url=https://...)
   -h, --help                     help for login
       --method string            authentication method: auto, browser, or device (default "auto")
       --no-browser               do not open a browser

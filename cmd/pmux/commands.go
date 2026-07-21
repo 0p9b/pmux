@@ -181,6 +181,7 @@ func providerListCommand(d dispatcher) *cobra.Command {
 
 func providerLoginCommand(d dispatcher) *cobra.Command {
 	var method, apiKeyFile, serviceAccount, prefix string
+	var fields []string
 	var noBrowser, callbackStdin, apiKeyStdin bool
 	cmd := &cobra.Command{Use: "login <provider>", Short: "Authenticate or configure a provider", Args: cobra.ExactArgs(1)}
 	cmd.Flags().StringVar(&method, "method", "auto", "authentication method: auto, browser, or device")
@@ -190,12 +191,17 @@ func providerLoginCommand(d dispatcher) *cobra.Command {
 	cmd.Flags().BoolVar(&apiKeyStdin, "api-key-stdin", false, "read an API key from standard input")
 	cmd.Flags().StringVar(&serviceAccount, "service-account", "", "private Vertex service-account JSON path")
 	cmd.Flags().StringVar(&prefix, "vertex-prefix", "", "explicit Vertex import prefix")
+	cmd.Flags().StringArrayVar(&fields, "field", nil, "non-secret provider field as key=value (repeatable, e.g. --field base-url=https://...)")
 	cmd.MarkFlagsMutuallyExclusive("api-key-file", "api-key-stdin")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if method != "auto" && method != "browser" && method != "device" {
 			return usage("--method must be auto, browser, or device")
 		}
-		return d.run(cmd, "providers.login", args, opts("method", method, "no_browser", noBrowser, "callback_url_stdin", callbackStdin, "api_key_file", apiKeyFile, "api_key_stdin", apiKeyStdin, "service_account", serviceAccount, "vertex_prefix", prefix))
+		fieldMap, err := parseProviderFields(fields)
+		if err != nil {
+			return err
+		}
+		return d.run(cmd, "providers.login", args, opts("method", method, "no_browser", noBrowser, "callback_url_stdin", callbackStdin, "api_key_file", apiKeyFile, "api_key_stdin", apiKeyStdin, "service_account", serviceAccount, "vertex_prefix", prefix, "provider_fields", fieldMap))
 	}
 	return cmd
 }
@@ -566,6 +572,33 @@ func updateComponentCommand(d dispatcher, component string) *cobra.Command {
 		return d.run(cmd, app.Operation("update."+component), nil, opts("version", target))
 	}
 	return cmd
+}
+
+// parseProviderFields validates repeatable key=value provider field flags.
+// Secret-shaped keys are rejected so credentials never travel through argv,
+// where they would leak into process listings.
+func parseProviderFields(flags []string) (map[string]string, error) {
+	if len(flags) == 0 {
+		return nil, nil
+	}
+	out := make(map[string]string, len(flags))
+	for _, flag := range flags {
+		key, value, ok := strings.Cut(flag, "=")
+		key = strings.TrimSpace(key)
+		if !ok || key == "" || value == "" {
+			return nil, usage("--field requires key=value with a non-empty key and value")
+		}
+		lowered := strings.ToLower(key)
+		if strings.Contains(lowered, "key") || strings.Contains(lowered, "secret") ||
+			strings.Contains(lowered, "token") || strings.Contains(lowered, "password") {
+			return nil, usage("--field only accepts non-secret fields; use --api-key-stdin or --api-key-file for credentials")
+		}
+		if _, duplicate := out[key]; duplicate {
+			return nil, usage("duplicate --field " + key)
+		}
+		out[key] = value
+	}
+	return out, nil
 }
 
 func opts(values ...any) map[string]any {

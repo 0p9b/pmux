@@ -33,7 +33,18 @@ These §50 criteria cannot run in hermetic CI without disposable provider secret
 | AC-4 | Full provider matrix: callback OAuth, device OAuth, API keys, Vertex import, xAI mechanism probe |
 | AC-6 | Live `pmux launch --client claude --model <id>` with Claude Code ≥2.0.0 |
 
-Use the provider acceptance workflow (`.github/workflows/provider-acceptance.yml`) with repository secrets, or run the commands in `docs/providers.md` on each platform and attach redacted transcripts to the release issue.
+Use the provider acceptance workflow (`.github/workflows/provider-acceptance.yml`, manual dispatch) with these repository secrets, or run the commands in `docs/providers.md` on each platform and attach redacted transcripts to the release issue.
+
+| Secret / variable | Provider row |
+|---|---|
+| `PMUX_ACCEPTANCE_GEMINI_KEY` | Gemini API key |
+| `PMUX_ACCEPTANCE_CLAUDE_KEY` | Claude API-key channel |
+| `PMUX_ACCEPTANCE_XAI_KEY` | xAI API-key channel |
+| `PMUX_ACCEPTANCE_OPENROUTER_KEY` | OpenRouter |
+| `PMUX_ACCEPTANCE_OPENAI_COMPAT_KEY` + variable `PMUX_ACCEPTANCE_OPENAI_COMPAT_BASE_URL` | Custom OpenAI-compatible endpoint |
+| `PMUX_ACCEPTANCE_VERTEX_SA_JSON` | Vertex service-account JSON (full file contents) |
+
+Each configured row runs `pmux setup --mode managed --yes`, a headless `pmux providers login` (stdin API key or Vertex service-account import), `pmux providers verify`, dynamic model discovery, and `pmux doctor`. Callback/device OAuth rows still require a browser-capable operator and are covered by `docs/providers.md` manual transcripts.
 
 ## Tagging v1.0.0
 

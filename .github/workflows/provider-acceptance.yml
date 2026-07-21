@@ -4,20 +4,30 @@ on:
   workflow_dispatch:
     inputs:
       provider:
-        description: Provider or channel to exercise (gemini, codex, claude, vertex, ...)
+        description: Provider or channel to exercise (gemini, claude, xai, openrouter, openai-compatible, vertex, all)
         required: true
-        type: string
-      skip_launch:
-        description: Skip Claude launch step
-        required: false
-        default: "true"
+        default: "all"
         type: choice
         options:
-          - "true"
-          - "false"
+          - "all"
+          - "gemini"
+          - "claude"
+          - "xai"
+          - "openrouter"
+          - "openai-compatible"
+          - "vertex"
 
 permissions:
   contents: read
+
+env:
+  PMUX_ACCEPTANCE_GEMINI_KEY: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY }}
+  PMUX_ACCEPTANCE_CLAUDE_KEY: ${{ secrets.PMUX_ACCEPTANCE_CLAUDE_KEY }}
+  PMUX_ACCEPTANCE_XAI_KEY: ${{ secrets.PMUX_ACCEPTANCE_XAI_KEY }}
+  PMUX_ACCEPTANCE_OPENROUTER_KEY: ${{ secrets.PMUX_ACCEPTANCE_OPENROUTER_KEY }}
+  PMUX_ACCEPTANCE_OPENAI_COMPAT_KEY: ${{ secrets.PMUX_ACCEPTANCE_OPENAI_COMPAT_KEY }}
+  PMUX_ACCEPTANCE_OPENAI_COMPAT_BASE_URL: ${{ vars.PMUX_ACCEPTANCE_OPENAI_COMPAT_BASE_URL }}
+  PMUX_ACCEPTANCE_VERTEX_SA_JSON: ${{ secrets.PMUX_ACCEPTANCE_VERTEX_SA_JSON }}
 
 jobs:
   live-provider:
@@ -26,37 +36,93 @@ jobs:
       - uses: actions/checkout@v4
       - name: Gate on repository secrets
         id: gate
-        env:
-          PMUX_ACCEPTANCE_GEMINI_KEY: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY }}
-          PMUX_ACCEPTANCE_API_KEY: ${{ secrets.PMUX_ACCEPTANCE_API_KEY }}
         run: |
           set -euo pipefail
-          if [[ -z "${PMUX_ACCEPTANCE_GEMINI_KEY}" && -z "${PMUX_ACCEPTANCE_API_KEY}" ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "No PMUX_ACCEPTANCE_* secrets configured; skipping live provider acceptance."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+          selected="${{ inputs.provider }}"
+          any=false
+          for name in gemini claude xai openrouter openai_compat vertex; do
+            upper="$(printf '%s' "$name" | tr 'a-z' 'A-Z')"
+            if [[ "$name" == "vertex" ]]; then
+              var_name="PMUX_ACCEPTANCE_VERTEX_SA_JSON"
+            else
+              var_name="PMUX_ACCEPTANCE_${upper}_KEY"
+            fi
+            secret="${!var_name:-}"
+            cli_name="${name//_/-}"
+            if [[ ( "$selected" == "all" || "$selected" == "$cli_name" ) && -n "$secret" ]]; then
+              echo "$name=true" >> "$GITHUB_OUTPUT"
+              any=true
+            else
+              echo "$name=false" >> "$GITHUB_OUTPUT"
+            fi
+          done
+          if [[ "$any" == "false" ]]; then
+            echo "No PMUX_ACCEPTANCE_* secrets configured for provider '$selected'; nothing to run." >&2
+            exit 1
           fi
-      - name: Skip without secrets
-        if: steps.gate.outputs.skip == 'true'
-        run: echo "Skipped (configure PMUX_ACCEPTANCE_GEMINI_KEY or PMUX_ACCEPTANCE_API_KEY to run)."
       - uses: actions/setup-go@v5
-        if: steps.gate.outputs.skip != 'true'
         with:
           go-version-file: go.mod
           cache: true
       - name: Build PMux
-        if: steps.gate.outputs.skip != 'true'
         run: go build -trimpath -o pmux ./cmd/pmux
-      - name: Run provider verification
-        if: steps.gate.outputs.skip != 'true'
-        env:
-          PMUX_ACCEPTANCE_PROVIDER: ${{ inputs.provider }}
-          PMUX_ACCEPTANCE_GEMINI_KEY: ${{ secrets.PMUX_ACCEPTANCE_GEMINI_KEY }}
-          PMUX_ACCEPTANCE_API_KEY: ${{ secrets.PMUX_ACCEPTANCE_API_KEY }}
+      - name: Managed setup
+        run: ./pmux setup --mode managed --yes
+      - name: Login Gemini (API key)
+        if: steps.gate.outputs.gemini == 'true'
         run: |
           set -euo pipefail
-          echo "Provider acceptance requires repository secrets and a prepared CLIProxyAPI instance."
-          echo "Configure PMUX_ACCEPTANCE_* secrets, then extend this workflow with managed-setup steps."
-          ./pmux version
-          ./pmux --json doctor || true
+          printf '%s' "$PMUX_ACCEPTANCE_GEMINI_KEY" | ./pmux providers login gemini --api-key-stdin --yes
+          ./pmux providers verify gemini
+      - name: Login Claude API-key channel
+        if: steps.gate.outputs.claude == 'true'
+        run: |
+          set -euo pipefail
+          printf '%s' "$PMUX_ACCEPTANCE_CLAUDE_KEY" | ./pmux providers login claude --api-key-stdin --yes
+          ./pmux providers verify claude
+      - name: Login xAI API-key channel
+        if: steps.gate.outputs.xai == 'true'
+        run: |
+          set -euo pipefail
+          printf '%s' "$PMUX_ACCEPTANCE_XAI_KEY" | ./pmux providers login xai --api-key-stdin --yes
+          ./pmux providers verify xai
+      - name: Login OpenRouter
+        if: steps.gate.outputs.openrouter == 'true'
+        run: |
+          set -euo pipefail
+          printf '%s' "$PMUX_ACCEPTANCE_OPENROUTER_KEY" | ./pmux providers login openrouter --api-key-stdin --yes
+          ./pmux providers verify openrouter
+      - name: Login custom OpenAI-compatible endpoint
+        if: steps.gate.outputs.openai_compat == 'true'
+        run: |
+          set -euo pipefail
+          if [[ -z "${PMUX_ACCEPTANCE_OPENAI_COMPAT_BASE_URL:-}" ]]; then
+            echo "PMUX_ACCEPTANCE_OPENAI_COMPAT_BASE_URL repository variable is required." >&2
+            exit 1
+          fi
+          printf '%s' "$PMUX_ACCEPTANCE_OPENAI_COMPAT_KEY" | ./pmux providers login openai-compatible \
+            --api-key-stdin --yes --field "base-url=${PMUX_ACCEPTANCE_OPENAI_COMPAT_BASE_URL}"
+          ./pmux providers verify openai-compatible
+      - name: Import Vertex service account
+        if: steps.gate.outputs.vertex == 'true'
+        run: |
+          set -euo pipefail
+          sa_file="$(mktemp)"
+          chmod 600 "$sa_file"
+          printf '%s' "$PMUX_ACCEPTANCE_VERTEX_SA_JSON" >"$sa_file"
+          sha256sum "$sa_file" > "$RUNNER_TEMP/sa-before.sha256"
+          ./pmux providers login vertex --service-account "$sa_file" --yes
+          ./pmux providers verify vertex
+          sha256sum -c "$RUNNER_TEMP/sa-before.sha256"
+          shred -u "$sa_file"
+      - name: Dynamic model discovery
+        run: |
+          set -euo pipefail
+          ./pmux models list --refresh
+          ./pmux --json models list --refresh > "$RUNNER_TEMP/models.json"
+          if ! jq -e '[.. | objects | select(has("id"))] | length > 0' "$RUNNER_TEMP/models.json" >/dev/null; then
+            echo "model discovery returned zero models after provider login" >&2
+            exit 1
+          fi
+      - name: Doctor
+        run: ./pmux doctor
