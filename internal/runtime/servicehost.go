@@ -72,7 +72,11 @@ func RunServiceHost(ctx context.Context, args []string, streams ServiceHostStrea
 			return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "PMux could not open its private proxy log.")
 		}
 		defer logFile.Close()
-		stdout, stderr = logFile, logFile
+		// Tee child output to both the inherited streams (launchd
+		// StandardOutPath/StandardErrorPath on macOS) and the private
+		// proxy log consumed by the Windows Task Scheduler log reader.
+		stdout = io.MultiWriter(streams.Stdout, logFile)
+		stderr = io.MultiWriter(streams.Stderr, logFile)
 	}
 	cmd := exec.CommandContext(ctx, binary, "-config", config)
 	cmd.Env = foreground.AllowlistedEnvironment(os.Environ())
