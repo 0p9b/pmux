@@ -10,6 +10,7 @@ import (
 	goruntime "runtime"
 	"strings"
 
+	"github.com/0p9b/pmux/internal/adapter/fs"
 	"github.com/0p9b/pmux/internal/adapter/service/foreground"
 	"github.com/0p9b/pmux/internal/pmuxerr"
 )
@@ -64,12 +65,17 @@ func RunServiceHost(ctx context.Context, args []string, streams ServiceHostStrea
 		if !filepath.IsAbs(logDir) || filepath.Clean(logDir) != logDir {
 			return pmuxerr.New(pmuxerr.ConfigPathMismatch, pmuxerr.Environment, "Service log path must be absolute.")
 		}
-		if err := os.MkdirAll(logDir, 0o700); err != nil {
+		if err := fs.EnsurePrivateDir(logDir); err != nil {
 			return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "PMux could not create its private service log directory.")
 		}
-		logFile, err = os.OpenFile(filepath.Join(logDir, "proxy.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		logPath := filepath.Join(logDir, "proxy.log")
+		logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {
 			return pmuxerr.Wrap(err, pmuxerr.ConfigUnreadable, pmuxerr.Environment, "PMux could not open its private proxy log.")
+		}
+		if err := fs.ProtectPrivateFile(logPath); err != nil {
+			_ = logFile.Close()
+			return pmuxerr.Wrap(err, pmuxerr.ConfigInsecurePermissions, pmuxerr.Environment, "PMux could not secure its private proxy log.")
 		}
 		defer logFile.Close()
 		// Tee child output to both the inherited streams (launchd

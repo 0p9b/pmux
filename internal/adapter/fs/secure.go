@@ -18,6 +18,11 @@ func EnsurePrivateDir(path string) error {
 	return protectPrivatePath(path, true)
 }
 
+// ProtectPrivateFile enforces owner-only access on an existing file.
+func ProtectPrivateFile(path string) error {
+	return protectPrivatePath(path, false)
+}
+
 // AtomicWritePrivate durably replaces path with owner-only payload bytes. The
 // temporary is created in the target directory, fsynced, renamed, then the
 // directory itself is fsynced. The original remains intact before rename.
