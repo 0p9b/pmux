@@ -90,7 +90,15 @@ func RunServiceHost(ctx context.Context, args []string, streams ServiceHostStrea
 	cmd.Stdin = streams.Stdin
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
+		return pmuxerr.Wrap(err, pmuxerr.ServiceStartFailed, pmuxerr.Upstream, "CLIProxyAPI service process could not start.")
+	}
+	if err := superviseChild(cmd); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return pmuxerr.Wrap(err, pmuxerr.ServiceStartFailed, pmuxerr.Environment, "CLIProxyAPI service process could not be supervised.")
+	}
+	if err := cmd.Wait(); err != nil {
 		return pmuxerr.Wrap(err, pmuxerr.ServiceStartFailed, pmuxerr.Upstream, "CLIProxyAPI service process exited.")
 	}
 	return nil
