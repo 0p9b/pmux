@@ -363,7 +363,7 @@ func isOwned(task RegisteredTask, instanceID string) bool {
 func mapTaskState(task RegisteredTask) service.ServiceState {
 	switch task.State {
 	case TaskStateReady, TaskStateDisabled:
-		if task.LastResult != 0 {
+		if taskResultFailed(task.LastResult) {
 			return service.ServiceFailed
 		}
 		return service.ServiceStopped
@@ -374,6 +374,15 @@ func mapTaskState(task RegisteredTask) service.ServiceState {
 	default:
 		return service.ServiceUnknown
 	}
+}
+
+// taskResultFailed reports whether a LastTaskResult value is a real failure.
+// Negative HRESULTs carry the severity-error bit; small positive values are
+// child-process exit codes. Values in the 0x0004xxxx range are SCHED_S_*
+// informational scheduler statuses (e.g. 0x00041303 "the task has not yet
+// run") and must not mark the service failed.
+func taskResultFailed(result int32) bool {
+	return result < 0 || (result > 0 && result < 0x10000)
 }
 
 func statusDetail(task RegisteredTask) string {
