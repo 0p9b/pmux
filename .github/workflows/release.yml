@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
       - name: Verify signed tag
         run: git verify-tag "$GITHUB_REF_NAME"
 
