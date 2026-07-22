@@ -902,6 +902,169 @@ func (c *Client) APICall(ctx context.Context, request management.APICallRequest)
 	return management.APICallResponse{Status: raw.Status, Headers: raw.Headers, Body: resultBody}, nil
 }
 
+func (c *Client) Plugins(ctx context.Context) (management.PluginList, error) {
+	var value management.PluginList
+	err := c.getJSON(ctx, "plugins", &value)
+	return value, err
+}
+func (c *Client) PluginStore(ctx context.Context) (management.PluginStoreList, error) {
+	var value management.PluginStoreList
+	err := c.getJSON(ctx, "plugin-store", &value)
+	return value, err
+}
+func (c *Client) InstallPlugin(ctx context.Context, id, source, version string) (management.PluginInstallResult, error) {
+	query := make(url.Values)
+	if source != "" {
+		query.Set("source", source)
+	}
+	if version != "" {
+		query.Set("version", version)
+	}
+	body, status, err := c.pluginMutation(ctx, http.MethodPost, []string{"plugin-store", id, "install"}, query, nil)
+	if err != nil {
+		return management.PluginInstallResult{}, err
+	}
+	if status == http.StatusConflict {
+		return management.PluginInstallResult{}, c.pluginConflictError("install", id, body)
+	}
+	var result management.PluginInstallResult
+	if err := decodeJSON(body, &result); err != nil {
+		return management.PluginInstallResult{}, err
+	}
+	return result, nil
+}
+func (c *Client) SetPluginEnabled(ctx context.Context, id string, enabled bool) error {
+	body, err := marshalBody(map[string]bool{"enabled": enabled})
+	if err != nil {
+		return err
+	}
+	_, _, _, err = c.managementRequestParts(ctx, http.MethodPatch, []string{"plugins", id, "enabled"}, nil, body, "")
+	return err
+}
+func (c *Client) PluginConfig(ctx context.Context, id string) (map[string]any, error) {
+	body, _, _, err := c.managementRequestParts(ctx, http.MethodGet, []string{"plugins", id, "config"}, nil, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	var config map[string]any
+	if err := decodeJSON(body, &config); err != nil {
+		return nil, err
+	}
+	if config == nil {
+		config = map[string]any{}
+	}
+	return config, nil
+}
+func (c *Client) PutPluginConfig(ctx context.Context, id string, config map[string]any) error {
+	return c.pluginConfigMutation(ctx, http.MethodPut, id, config)
+}
+func (c *Client) PatchPluginConfig(ctx context.Context, id string, patch map[string]any) error {
+	return c.pluginConfigMutation(ctx, http.MethodPatch, id, patch)
+}
+func (c *Client) pluginConfigMutation(ctx context.Context, method, id string, value map[string]any) error {
+	if value == nil {
+		value = map[string]any{}
+	}
+	body, err := marshalBody(value)
+	if err != nil {
+		return err
+	}
+	_, _, _, err = c.managementRequestParts(ctx, method, []string{"plugins", id, "config"}, nil, body, "")
+	return err
+}
+func (c *Client) DeletePlugin(ctx context.Context, id string) (management.PluginDeleteResult, error) {
+	body, status, err := c.pluginMutation(ctx, http.MethodDelete, []string{"plugins", id}, nil, nil)
+	if err != nil {
+		return management.PluginDeleteResult{}, err
+	}
+	if status == http.StatusConflict {
+		return management.PluginDeleteResult{}, c.pluginConflictError("delete", id, body)
+	}
+	var result management.PluginDeleteResult
+	if err := decodeJSON(body, &result); err != nil {
+		return management.PluginDeleteResult{}, err
+	}
+	return result, nil
+}
+
+// pluginMutation performs a plugin mutation whose HTTP 409 response carries a
+// structured body (for example restart_required) that the generic status
+// classifier discards. It mirrors Client.request but returns the conflict
+// payload so callers can fold the upstream detail into the typed error.
+func (c *Client) pluginMutation(ctx context.Context, method string, parts []string, query url.Values, body []byte) ([]byte, int, error) {
+	if c.managementKey == "" {
+		return nil, 0, managementKeyMissing()
+	}
+	requestURL, err := url.Parse(c.managementEndpoint(parts...))
+	if err != nil {
+		return nil, 0, pmuxerr.Wrap(safeCause(err, "invalid request URL"), pmuxerr.UnhandledInternal, pmuxerr.Internal, "Could not construct the CLIProxyAPI request")
+	}
+	if len(query) != 0 {
+		requestURL.RawQuery = query.Encode()
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(requestCtx, method, requestURL.String(), bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, pmuxerr.Wrap(safeCause(err, "request creation failed"), pmuxerr.UnhandledInternal, pmuxerr.Internal, "Could not construct the CLIProxyAPI request")
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Authorization", "Bearer "+c.managementKey)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(requestCtx.Err(), context.Canceled) {
+			return nil, 0, pmuxerr.Wrap(context.Canceled, pmuxerr.CodeCanceled, pmuxerr.User, "The CLIProxyAPI request was canceled")
+		}
+		message := "Could not reach CLIProxyAPI"
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(requestCtx.Err(), context.DeadlineExceeded) {
+			message = "CLIProxyAPI did not respond within " + c.timeout.String()
+		}
+		return nil, 0, pmuxerr.Wrap(safeCause(err, "HTTP transport failed"), pmuxerr.ManagementUnreachable, pmuxerr.Environment, message)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	payload, err := readBounded(resp.Body, c.maxResponse)
+	if err != nil {
+		if errors.Is(err, errResponseTooLarge) {
+			return nil, resp.StatusCode, pmuxerr.New(pmuxerr.UnhandledUpstreamShape, pmuxerr.Upstream, fmt.Sprintf("CLIProxyAPI response exceeded the %d-byte safety limit", c.maxResponse))
+		}
+		return nil, resp.StatusCode, pmuxerr.Wrap(safeCause(err, "response read failed"), pmuxerr.ManagementUnreachable, pmuxerr.Environment, "Could not read the CLIProxyAPI response")
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 || resp.StatusCode == http.StatusConflict {
+		return payload, resp.StatusCode, nil
+	}
+	return nil, resp.StatusCode, c.statusError(ctx, requestSpec{management: true, classify404: true}, resp.StatusCode)
+}
+
+// pluginConflictError preserves the upstream 409 detail (for example
+// plugin_update_requires_restart) that Client.request would discard.
+func (c *Client) pluginConflictError(operation, id string, body []byte) error {
+	var detail struct {
+		Error           string `json:"error"`
+		Status          string `json:"status"`
+		Message         string `json:"message"`
+		RestartRequired bool   `json:"restart_required"`
+	}
+	_ = json.Unmarshal(body, &detail)
+	reason := detail.Error
+	if reason == "" {
+		reason = detail.Status
+	}
+	if reason == "" {
+		reason = detail.Message
+	}
+	reason = c.redact(reason)
+	message := fmt.Sprintf("CLIProxyAPI could not %s plugin %q (restart_required=%t)", operation, id, detail.RestartRequired)
+	if reason != "" {
+		message = fmt.Sprintf("CLIProxyAPI could not %s plugin %q: %s (restart_required=%t)", operation, id, reason, detail.RestartRequired)
+	}
+	return &pmuxerr.Error{
+		Code: pmuxerr.ConfigMutationConflict, Class: pmuxerr.Upstream, Message: message,
+		Evidence: []string{fmt.Sprintf("http_status=%d", http.StatusConflict), fmt.Sprintf("restart_required=%t", detail.RestartRequired)},
+	}
+}
+
 func redactResponseBody(c *Client, raw json.RawMessage) []byte {
 	var text string
 	if json.Unmarshal(raw, &text) == nil {

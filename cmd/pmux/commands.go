@@ -82,7 +82,9 @@ func shouldRunTUI(operation app.Operation, options map[string]any) bool {
 	}
 	client, _ := options["client"].(string)
 	model, _ := options["model"].(string)
-	if client != "" && client != "claude" {
+	switch client {
+	case "", "claude", "codex", "gemini", "opencode":
+	default:
 		return false
 	}
 	return client == "" || model == ""
@@ -102,7 +104,9 @@ func cloneTUIOptions(options map[string]any) map[string]any {
 func addCommands(root *cobra.Command, d dispatcher) {
 	root.AddCommand(
 		setupCommand(d), providersCommand(d), modelsCommand(d), launchCommand(d),
-		claudeCommand(d), doctorCommand(d), serviceCommand(d), configCommand(d),
+		clientAliasCommand(d, "claude"), clientAliasCommand(d, "codex"), clientAliasCommand(d, "gemini"), clientAliasCommand(d, "opencode"),
+		keysCommand(d), pluginsCommand(d), panelCommand(d), profilesCommand(d),
+		doctorCommand(d), serviceCommand(d), configCommand(d),
 		updateCommand(d), completionCommand(d), versionCommand(d),
 	)
 }
@@ -158,8 +162,20 @@ func providersCommand(d dispatcher) *cobra.Command {
 		return d.run(cmd, op, nil, opts("status", "", "type", "", "enabled", "", "refresh", false))
 	}
 	parent.AddCommand(providerListCommand(d), providerLoginCommand(d), providerVerifyCommand(d),
-		providerToggleCommand(d, "enable"), providerToggleCommand(d, "disable"), providerRemoveCommand(d))
+		providerToggleCommand(d, "enable"), providerToggleCommand(d, "disable"), providerRemoveCommand(d),
+		providerResetQuotaCommand(d))
 	return parent
+}
+
+func providerResetQuotaCommand(d dispatcher) *cobra.Command {
+	cmd := &cobra.Command{Use: "reset-quota <auth-file>", Short: "Reset quota state for one provider account", Args: cobra.ExactArgs(1)}
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpProvidersResetQuota, args, nil)
+	}
+	return cmd
 }
 
 func providerListCommand(d dispatcher) *cobra.Command {
@@ -248,7 +264,68 @@ func modelsCommand(d dispatcher) *cobra.Command {
 		}
 		return d.run(cmd, op, nil, opts("provider", "", "available", false, "favorite", false, "search", "", "refresh", false))
 	}
-	parent.AddCommand(modelListCommand(d), modelTestCommand(d), modelFavoriteCommand(d, "favorite"), modelFavoriteCommand(d, "unfavorite"))
+	parent.AddCommand(modelListCommand(d), modelTestCommand(d), modelFavoriteCommand(d, "favorite"), modelFavoriteCommand(d, "unfavorite"),
+		modelAliasesCommand(d), modelExclusionsCommand(d))
+	return parent
+}
+
+func modelAliasesCommand(d dispatcher) *cobra.Command {
+	parent := &cobra.Command{Use: "aliases", Short: "Manage per-channel model aliases", Args: cobra.NoArgs}
+	parent.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpModelsAliases, nil, opts("action", "list"))
+	}
+	set := &cobra.Command{Use: "set <channel> <alias> <model-id>", Short: "Alias a name to an exact model ID", Args: cobra.ExactArgs(3)}
+	set.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpModelsAliases, args, opts("action", "set"))
+	}
+	remove := &cobra.Command{Use: "remove <channel> <alias>", Short: "Remove one alias", Args: cobra.ExactArgs(2)}
+	remove.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpModelsAliases, args, opts("action", "remove"))
+	}
+	clear := &cobra.Command{Use: "clear <channel>", Short: "Remove all aliases on one channel", Args: cobra.ExactArgs(1)}
+	clear.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpModelsAliases, args, opts("action", "clear"))
+	}
+	parent.AddCommand(set, remove, clear)
+	return parent
+}
+
+func modelExclusionsCommand(d dispatcher) *cobra.Command {
+	parent := &cobra.Command{Use: "exclusions", Short: "Manage per-channel excluded model patterns", Args: cobra.NoArgs}
+	parent.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpModelsExclusions, nil, opts("action", "list"))
+	}
+	add := &cobra.Command{Use: "add <channel> <pattern>", Short: "Exclude one exact or wildcard model pattern", Args: cobra.ExactArgs(2)}
+	add.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpModelsExclusions, args, opts("action", "add"))
+	}
+	remove := &cobra.Command{Use: "remove <channel> <pattern>", Short: "Remove one exclusion pattern", Args: cobra.ExactArgs(2)}
+	remove.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpModelsExclusions, args, opts("action", "remove"))
+	}
+	clear := &cobra.Command{Use: "clear <channel>", Short: "Remove all exclusions on one channel", Args: cobra.ExactArgs(1)}
+	clear.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpModelsExclusions, args, opts("action", "clear"))
+	}
+	parent.AddCommand(add, remove, clear)
 	return parent
 }
 
@@ -287,19 +364,22 @@ func modelFavoriteCommand(d dispatcher, action string) *cobra.Command {
 }
 
 func launchCommand(d dispatcher) *cobra.Command {
-	var client, model string
-	cmd := &cobra.Command{Use: "launch --client claude --model <id> [-- <client args>]", Short: "Launch a coding client", Args: cobra.ArbitraryArgs}
-	cmd.Flags().StringVar(&client, "client", "", "coding client (MVP: claude)")
+	var client, model, profile string
+	var fallback []string
+	cmd := &cobra.Command{Use: "launch --client <client> --model <id> [-- <client args>]", Short: "Launch a coding client", Args: cobra.ArbitraryArgs}
+	cmd.Flags().StringVar(&client, "client", "", "coding client: claude, codex, gemini, or opencode")
 	cmd.Flags().StringVar(&model, "model", "", "exact dynamically discovered model ID")
+	cmd.Flags().StringVar(&profile, "profile", "", "named launch profile from `pmux profiles set`")
+	cmd.Flags().StringSliceVar(&fallback, "fallback", nil, "exact fallback model IDs tried in order (comma-separated or repeatable)")
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		if client != "" && client != "claude" {
-			return usage("--client must be claude")
+		if client != "" && client != "claude" && client != "codex" && client != "gemini" && client != "opencode" {
+			return usage("--client must be claude, codex, gemini, or opencode")
 		}
-		if !d.interactive() && client == "" {
-			return usage("Noninteractive launch requires --client; no client was started.")
+		if !d.interactive() && client == "" && profile == "" {
+			return usage("Noninteractive launch requires --client or --profile; no client was started.")
 		}
-		if !d.interactive() && model == "" {
-			return usage("Noninteractive launch requires --model; no client was started.")
+		if !d.interactive() && model == "" && profile == "" {
+			return usage("Noninteractive launch requires --model or --profile; no client was started.")
 		}
 		if len(args) > 0 && cmd.ArgsLenAtDash() < 0 {
 			return usage("client arguments must follow --")
@@ -307,28 +387,28 @@ func launchCommand(d dispatcher) *cobra.Command {
 		if hasClientModelArg(args) {
 			return usage("Client arguments must not contain '--model'; use 'pmux launch --model <id>'.")
 		}
-		return d.run(cmd, "launch", args, opts("client", client, "model", model))
+		return d.run(cmd, "launch", args, opts("client", client, "model", model, "profile", profile, "fallback", fallback))
 	}
 	return cmd
 }
 
-func claudeCommand(d dispatcher) *cobra.Command {
-	cmd := &cobra.Command{Use: "claude <id> [-- <claude args>]", Short: "Launch Claude Code with an exact model", Args: cobra.ArbitraryArgs}
+func clientAliasCommand(d dispatcher, client string) *cobra.Command {
+	cmd := &cobra.Command{Use: client + " <id> [-- <" + client + " args>]", Short: "Launch " + client + " with an exact model", Args: cobra.ArbitraryArgs}
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		dash := cmd.ArgsLenAtDash()
 		if len(args) == 0 {
-			return usage("pmux claude requires an exact model ID")
+			return usage("pmux " + client + " requires an exact model ID")
 		}
 		if dash < 0 && len(args) != 1 {
-			return usage("Claude arguments must follow --")
+			return usage(client + " arguments must follow --")
 		}
 		if dash >= 0 && dash != 1 {
-			return usage("pmux claude requires exactly one model ID before --")
+			return usage("pmux " + client + " requires exactly one model ID before --")
 		}
 		if hasClientModelArg(args[1:]) {
 			return usage("Client arguments must not contain '--model'; use 'pmux launch --model <id>'.")
 		}
-		return d.run(cmd, "launch", args[1:], opts("client", "claude", "model", args[0]))
+		return d.run(cmd, "launch", args[1:], opts("client", client, "model", args[0], "profile", "", "fallback", []string(nil)))
 	}
 	return cmd
 }
@@ -628,4 +708,154 @@ func usage(message string) *pmuxerr.Error {
 	err.Explanation = "The command line does not match PMux's public grammar."
 	err.Repair = []string{"Run `pmux --help` or the command's `--help` for the accepted form."}
 	return err
+}
+
+func keysCommand(d dispatcher) *cobra.Command {
+	parent := &cobra.Command{Use: "keys", Short: "Manage client API keys", Args: cobra.NoArgs}
+	parent.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpKeysList, nil, nil)
+	}
+	list := &cobra.Command{Use: "list", Short: "List client API keys (masked)", Args: cobra.NoArgs}
+	list.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpKeysList, nil, nil)
+	}
+	var generate bool
+	var apiKeyFile string
+	var apiKeyStdin bool
+	add := &cobra.Command{Use: "add", Short: "Add a client API key", Args: cobra.NoArgs}
+	add.Flags().BoolVar(&generate, "generate", false, "generate a random key and show it once")
+	add.Flags().StringVar(&apiKeyFile, "api-key-file", "", "read the key from a private file")
+	add.Flags().BoolVar(&apiKeyStdin, "api-key-stdin", false, "read the key from standard input")
+	add.MarkFlagsMutuallyExclusive("generate", "api-key-file", "api-key-stdin")
+	add.RunE = func(cmd *cobra.Command, _ []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpKeysAdd, nil, opts("generate", generate, "api_key_file", apiKeyFile, "api_key_stdin", apiKeyStdin))
+	}
+	remove := &cobra.Command{Use: "remove <fingerprint>", Short: "Remove a client API key by fingerprint", Args: cobra.ExactArgs(1)}
+	remove.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpKeysRemove, args, nil)
+	}
+	parent.AddCommand(list, add, remove)
+	return parent
+}
+
+func pluginsCommand(d dispatcher) *cobra.Command {
+	parent := &cobra.Command{Use: "plugins", Short: "Manage CLIProxyAPI plugins", Args: cobra.NoArgs}
+	parent.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpPluginsList, nil, nil)
+	}
+	list := &cobra.Command{Use: "list", Short: "List installed plugins", Args: cobra.NoArgs}
+	list.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpPluginsList, nil, nil)
+	}
+	store := &cobra.Command{Use: "store", Short: "List plugins available in the store", Args: cobra.NoArgs}
+	store.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpPluginStore, nil, nil)
+	}
+	var source, version string
+	install := &cobra.Command{Use: "install <plugin>", Short: "Install a plugin from the store", Args: cobra.ExactArgs(1)}
+	install.Flags().StringVar(&source, "source", "", "store source ID when IDs collide")
+	install.Flags().StringVar(&version, "version", "", "plugin version to install")
+	install.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpPluginInstall, args, opts("source", source, "version", version))
+	}
+	enable := &cobra.Command{Use: "enable <plugin>", Short: "Enable a plugin", Args: cobra.ExactArgs(1)}
+	enable.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpPluginSetEnabled, args, opts("enabled", true))
+	}
+	disable := &cobra.Command{Use: "disable <plugin>", Short: "Disable a plugin", Args: cobra.ExactArgs(1)}
+	disable.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpPluginSetEnabled, args, opts("enabled", false))
+	}
+	config := &cobra.Command{Use: "config", Short: "Manage plugin configuration", Args: cobra.NoArgs}
+	configShow := &cobra.Command{Use: "show <plugin>", Short: "Show a plugin configuration", Args: cobra.ExactArgs(1)}
+	configShow.RunE = func(cmd *cobra.Command, args []string) error {
+		return d.run(cmd, app.OpPluginConfigShow, args, nil)
+	}
+	var patch bool
+	configSet := &cobra.Command{Use: "set <plugin> <json>", Short: "Replace a plugin configuration with a JSON object", Args: cobra.ExactArgs(2)}
+	configSet.Flags().BoolVar(&patch, "patch", false, "shallow-merge instead of replace; null values delete keys")
+	configSet.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpPluginConfigSet, args, opts("patch", patch))
+	}
+	config.AddCommand(configShow, configSet)
+	remove := &cobra.Command{Use: "remove <plugin>", Short: "Remove an installed plugin", Args: cobra.ExactArgs(1)}
+	remove.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpPluginRemove, args, nil)
+	}
+	parent.AddCommand(list, store, install, enable, disable, config, remove)
+	return parent
+}
+
+func panelCommand(d dispatcher) *cobra.Command {
+	var open bool
+	cmd := &cobra.Command{Use: "panel [--open]", Short: "Show the CLIProxyAPI management panel URL", Args: cobra.NoArgs}
+	cmd.Flags().BoolVar(&open, "open", false, "open the panel in the default browser")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpPanel, nil, opts("open", open))
+	}
+	return cmd
+}
+
+func profilesCommand(d dispatcher) *cobra.Command {
+	parent := &cobra.Command{Use: "profiles", Short: "Manage named launch profiles", Args: cobra.NoArgs}
+	parent.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpProfilesList, nil, nil)
+	}
+	list := &cobra.Command{Use: "list", Short: "List profiles", Args: cobra.NoArgs}
+	list.RunE = func(cmd *cobra.Command, _ []string) error {
+		return d.run(cmd, app.OpProfilesList, nil, nil)
+	}
+	show := &cobra.Command{Use: "show <name>", Short: "Show one profile", Args: cobra.ExactArgs(1)}
+	show.RunE = func(cmd *cobra.Command, args []string) error {
+		return d.run(cmd, app.OpProfilesShow, args, nil)
+	}
+	var client, model string
+	var fallback, args []string
+	set := &cobra.Command{Use: "set <name> --client <client> --model <id>", Short: "Create or replace a launch profile", Args: cobra.ExactArgs(1)}
+	set.Flags().StringVar(&client, "client", "", "coding client: claude, codex, gemini, or opencode")
+	set.Flags().StringVar(&model, "model", "", "exact dynamically discovered model ID")
+	set.Flags().StringSliceVar(&fallback, "fallback", nil, "exact fallback model IDs tried in order")
+	set.Flags().StringArrayVar(&args, "arg", nil, "extra client argument (repeatable)")
+	set.RunE = func(cmd *cobra.Command, positional []string) error {
+		if client == "" {
+			return usage("profiles set requires --client")
+		}
+		if model == "" {
+			return usage("profiles set requires --model")
+		}
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpProfilesSet, positional, opts("client", client, "model", model, "fallback", fallback, "args", args))
+	}
+	remove := &cobra.Command{Use: "remove <name>", Short: "Remove a profile", Args: cobra.ExactArgs(1)}
+	remove.RunE = func(cmd *cobra.Command, args []string) error {
+		if !d.interactive() && !d.flags.Yes {
+			return usage("Noninteractive operation requires --yes; no changes were made.")
+		}
+		return d.run(cmd, app.OpProfilesRemove, args, nil)
+	}
+	parent.AddCommand(list, show, set, remove)
+	return parent
 }

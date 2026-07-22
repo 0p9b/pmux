@@ -25,6 +25,9 @@ import (
 	"github.com/0p9b/pmux/internal/adapter/auth"
 	"github.com/0p9b/pmux/internal/adapter/bundle"
 	clientclaude "github.com/0p9b/pmux/internal/adapter/client/claude"
+	clientcodex "github.com/0p9b/pmux/internal/adapter/client/codex"
+	clientgemini "github.com/0p9b/pmux/internal/adapter/client/gemini"
+	clientopencode "github.com/0p9b/pmux/internal/adapter/client/opencode"
 	"github.com/0p9b/pmux/internal/adapter/configfile"
 	"github.com/0p9b/pmux/internal/adapter/discovery"
 	adapterdoctor "github.com/0p9b/pmux/internal/adapter/doctor"
@@ -109,7 +112,7 @@ func NewNative(options Options) (app.UseCases, error) {
 		Management: native.management, Models: native.models, Services: native.service,
 		Configs: native.config, Auth: native.auth, Launcher: native.launcher,
 		Secrets: native.loadProxyKey, KnownSecrets: native.loadKnownSecrets, ModelTester: native, ConfigFiles: native, PMuxConfig: native, Doctor: native, Bundle: native,
-		Updates: native, Input: native.stdin, ReadPassword: native.readPassword, VerifyPrivateFile: func(path string) error { return platform.VerifySecurePermissions(path, false) }, WorkingDir: os.Getwd, Now: time.Now,
+		Updates: native, Input: native.stdin, ReadPassword: native.readPassword, VerifyPrivateFile: func(path string) error { return platform.VerifySecurePermissions(path, false) }, OpenURL: platform.OpenBrowser, WorkingDir: os.Getwd, Now: time.Now,
 		Output: native.stdout,
 	}
 	router, err := app.NewRouter(deps)
@@ -661,7 +664,23 @@ func (n *nativeRuntime) launcher(_ context.Context, installation state.Installat
 		}
 		return requireLiveModel(entries, exactID)
 	}
-	launcher := clientclaude.New(clientclaude.Options{Stdin: n.stdin, Stdout: n.stdout, Stderr: n.stderr, JSONMode: invocation.JSON, ModelPreflight: preflight, SettingsPath: filepath.Join(userHome(), ".claude", "settings.json"), PersistenceStatePath: filepath.Join(n.roots.State, "claude-persistence.json")})
+	clientID := "claude"
+	if value, ok := invocation.Options["client"].(string); ok && value != "" {
+		clientID = value
+	}
+	var launcher domainclient.ClientLauncher
+	switch domainclient.ClientID(clientID) {
+	case domainclient.Claude, "":
+		launcher = clientclaude.New(clientclaude.Options{Stdin: n.stdin, Stdout: n.stdout, Stderr: n.stderr, JSONMode: invocation.JSON, ModelPreflight: preflight, SettingsPath: filepath.Join(userHome(), ".claude", "settings.json"), PersistenceStatePath: filepath.Join(n.roots.State, "claude-persistence.json")})
+	case domainclient.Codex:
+		launcher = clientcodex.New(clientcodex.Options{Stdin: n.stdin, Stdout: n.stdout, Stderr: n.stderr, JSONMode: invocation.JSON, ModelPreflight: preflight})
+	case domainclient.Gemini:
+		launcher = clientgemini.New(clientgemini.Options{Stdin: n.stdin, Stdout: n.stdout, Stderr: n.stderr, JSONMode: invocation.JSON, ModelPreflight: preflight, HomeDir: filepath.Join(n.roots.State, "gemini-home")})
+	case domainclient.OpenCode:
+		launcher = clientopencode.New(clientopencode.Options{Stdin: n.stdin, Stdout: n.stdout, Stderr: n.stderr, JSONMode: invocation.JSON})
+	default:
+		return nil, pmuxerr.New(pmuxerr.CodeUsage, pmuxerr.User, fmt.Sprintf("Unsupported client %q; supported clients are claude, codex, gemini, and opencode.", clientID))
+	}
 	if installation.Kind == "container" {
 		return readOnlyContainerLauncher{inner: launcher}, nil
 	}

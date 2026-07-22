@@ -114,13 +114,17 @@ Docker support in v1 is limited to detection, read-only adoption, and diagnosis 
 | Managed or read-only setup | First-run flow | `pmux setup --mode managed|adopt` |
 | Providers and accounts | Providers | `pmux providers list`, `pmux providers login <provider>`, `pmux providers verify [provider]` |
 | Live model catalog | Models | `pmux models list --refresh`, `pmux models test <model>` |
-| Claude Code launch | Launch | `pmux launch --client claude --model <id>` or `pmux claude <id>` |
+| Model aliases and exclusions | — | `pmux models aliases ...`, `pmux models exclusions ...` |
+| Coding client launch | Launch | `pmux launch --client claude\|codex\|gemini\|opencode --model <id>` or `pmux <client> <id>` |
+| Named profiles and fallback chains | — | `pmux profiles set <name> --client <client> --model <id> [--fallback ...]`, `pmux launch --profile <name>` |
+| Client API keys | — | `pmux keys list`, `pmux keys add [--generate]`, `pmux keys remove <fingerprint>` |
+| Plugins and control panel | — | `pmux plugins list|store|install|enable|disable|config|remove`, `pmux panel [--open]` |
 | Diagnostics and repair | Doctor | `pmux doctor`, then an explicit `pmux doctor --fix [<id>...]` |
 | Native lifecycle and logs | Service, Logs | `pmux service status`, `pmux service logs [--follow]` |
 | Proxy/PMux configuration | Config, Settings | `pmux config --scope proxy|pmux show|get|set|edit|backup|restore` |
 | Manual updates | — | `pmux update check`, `pmux update self`, `pmux update proxy` |
 
-Claude Code v2.0.0 or newer is the only v1 coding client. PMux passes one exact live model ID and adds only `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` to the child process. Codex CLI, Gemini CLI, OpenCode, named profiles, and fallback chains are phase 2. Multi-host fleet work is phase 3 and is not exposed as a v1 command.
+PMux passes one exact live model ID and adds only process-scoped credentials to the child process; nothing is written to the user's own client configuration. Supported clients are Claude Code (v2.0.0+), Codex CLI, Gemini CLI, and OpenCode. Named profiles and fallback model chains are supported; see [Claude Code and other clients](docs/clients.md). Multi-host fleet work is phase 3 and is not exposed as a command.
 
 ## Privacy and security
 

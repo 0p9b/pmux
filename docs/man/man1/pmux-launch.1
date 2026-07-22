@@ -6,7 +6,7 @@ pmux-launch - Launch a coding client
 
 
 .SH SYNOPSIS
-\fBpmux launch --client claude --model  [-- ] [flags]\fP
+\fBpmux launch --client  --model  [-- ] [flags]\fP
 
 
 .SH DESCRIPTION
@@ -15,7 +15,11 @@ Launch a coding client
 
 .SH OPTIONS
 \fB--client\fP=""
-	coding client (MVP: claude)
+	coding client: claude, codex, gemini, or opencode
+
+.PP
+\fB--fallback\fP=[]
+	exact fallback model IDs tried in order (comma-separated or repeatable)
 
 .PP
 \fB-h\fP, \fB--help\fP[=false]
@@ -24,6 +28,10 @@ Launch a coding client
 .PP
 \fB--model\fP=""
 	exact dynamically discovered model ID
+
+.PP
+\fB--profile\fP=""
+	named launch profile from \fBpmux profiles set\fR
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS

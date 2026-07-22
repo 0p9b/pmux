@@ -117,7 +117,9 @@ func TestLaunchSelectorEligibility(t *testing.T) {
 		{name: "default Claude for exact model", options: map[string]any{"client": "", "model": "runtime-model"}, want: true},
 		{name: "choose model", options: map[string]any{"client": "claude", "model": ""}, want: true},
 		{name: "complete launch", options: map[string]any{"client": "claude", "model": "runtime-model"}, want: false},
-		{name: "unsupported client stays an error", options: map[string]any{"client": "codex", "model": ""}, want: false},
+		{name: "codex chooses model", options: map[string]any{"client": "codex", "model": ""}, want: true},
+		{name: "opencode chooses model", options: map[string]any{"client": "opencode", "model": ""}, want: true},
+		{name: "unsupported client stays an error", options: map[string]any{"client": "cursor", "model": ""}, want: false},
 	}
 	for _, test := range cases {
 		if got := shouldRunTUI(app.OpLaunch, test.options); got != test.want {

@@ -13,16 +13,26 @@ import (
 )
 
 type Config struct {
-	Version                int               `json:"version"`
-	Theme                  string            `json:"theme,omitempty"`
-	UpdateCheck            bool              `json:"update_check,omitempty"`
-	DefaultInstallation    string            `json:"default_installation,omitempty"`
-	DefaultClient          string            `json:"default_client,omitempty"`
-	DefaultModel           string            `json:"default_model,omitempty"`
-	HighLatencyMode        *bool             `json:"high_latency_mode,omitempty"`
-	LogLineLimit           int               `json:"log_line_limit,omitempty"`
-	Visual                 map[string]string `json:"visual,omitempty"`
-	PersistentClaudeModels map[string]string `json:"persistent_claude_models,omitempty"`
+	Version                int                `json:"version"`
+	Theme                  string             `json:"theme,omitempty"`
+	UpdateCheck            bool               `json:"update_check,omitempty"`
+	DefaultInstallation    string             `json:"default_installation,omitempty"`
+	DefaultClient          string             `json:"default_client,omitempty"`
+	DefaultModel           string             `json:"default_model,omitempty"`
+	HighLatencyMode        *bool              `json:"high_latency_mode,omitempty"`
+	LogLineLimit           int                `json:"log_line_limit,omitempty"`
+	Visual                 map[string]string  `json:"visual,omitempty"`
+	PersistentClaudeModels map[string]string  `json:"persistent_claude_models,omitempty"`
+	Profiles               map[string]Profile `json:"profiles,omitempty"`
+}
+
+// Profile is a named, reusable launch definition. Fallback lists exact model
+// IDs tried in order when Model is not currently served.
+type Profile struct {
+	Client   string   `json:"client"`
+	Model    string   `json:"model"`
+	Fallback []string `json:"fallback,omitempty"`
+	Args     []string `json:"args,omitempty"`
 }
 
 type State struct {

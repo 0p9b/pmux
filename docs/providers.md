@@ -86,6 +86,16 @@ Enable/disable is idempotent and keeps credentials. Account removal deletes only
 
 Removing a local OAuth credential does not revoke the provider-side grant. Revoke it separately in the provider account when complete revocation is required.
 
+## Quota state reset
+
+When CLIProxyAPI has cooled down an account after quota errors, an explicit reset clears that state for one auth file:
+
+```sh
+pmux providers reset-quota <auth-file-name>
+```
+
+The name comes from `pmux providers list`. The reset requires confirmation or global `--yes`. Quota policy itself (`quota-exceeded.switch-project`, `quota-exceeded.switch-preview-model`, `quota-exceeded.antigravity-credits`) is proxy configuration managed with `pmux config --scope proxy set`.
+
 ## JSON and streaming events
 
 Global `--json` disables TUI, browser opening, clipboard writes, editor launch, and prompts. OAuth produces redacted NDJSON events: `auth_started`, `verification_required`, `waiting`, and exactly one terminal `complete` or `error`. A verification URL/user code appears only in the transient event needed for authorization; callback URLs and tokens do not.

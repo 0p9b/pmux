@@ -42,14 +42,17 @@ func testDependencies(spy app.UseCases, terminal bool, out, stderr *bytes.Buffer
 
 func TestCanonicalCommandTree(t *testing.T) {
 	root := newRootCommand(testDependencies(&commandSpy{}, false, &bytes.Buffer{}, &bytes.Buffer{}))
-	assertChildren(t, root, []string{"claude", "completion", "config", "doctor", "launch", "models", "providers", "service", "setup", "update", "version"})
-	assertChildren(t, child(t, root, "providers"), []string{"disable", "enable", "list", "login", "remove", "verify"})
-	assertChildren(t, child(t, root, "models"), []string{"favorite", "list", "test", "unfavorite"})
+	assertChildren(t, root, []string{"claude", "codex", "completion", "config", "doctor", "gemini", "keys", "launch", "models", "opencode", "panel", "plugins", "profiles", "providers", "service", "setup", "update", "version"})
+	assertChildren(t, child(t, root, "providers"), []string{"disable", "enable", "list", "login", "remove", "reset-quota", "verify"})
+	assertChildren(t, child(t, root, "models"), []string{"aliases", "exclusions", "favorite", "list", "test", "unfavorite"})
+	assertChildren(t, child(t, root, "keys"), []string{"add", "list", "remove"})
+	assertChildren(t, child(t, root, "plugins"), []string{"config", "disable", "enable", "install", "list", "remove", "store"})
+	assertChildren(t, child(t, root, "profiles"), []string{"list", "remove", "set", "show"})
 	assertChildren(t, child(t, root, "service"), []string{"install", "logs", "restart", "start", "status", "stop", "uninstall"})
 	assertChildren(t, child(t, root, "config"), []string{"backup", "edit", "get", "restore", "set", "show"})
 	assertChildren(t, child(t, root, "update"), []string{"check", "proxy", "self"})
 
-	for _, forbidden := range []string{"adopt", "auth", "env", "fleet", "install", "keys", "status", "use"} {
+	for _, forbidden := range []string{"adopt", "auth", "env", "fleet", "install", "status", "use"} {
 		if findChild(root, forbidden) != nil {
 			t.Fatalf("forbidden top-level command %q is registered", forbidden)
 		}

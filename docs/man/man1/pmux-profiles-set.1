@@ -1,0 +1,55 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-profiles-set - Create or replace a launch profile
+
+
+.SH SYNOPSIS
+\fBpmux profiles set  --client  --model  [flags]\fP
+
+
+.SH DESCRIPTION
+Create or replace a launch profile
+
+
+.SH OPTIONS
+\fB--arg\fP=[]
+	extra client argument (repeatable)
+
+.PP
+\fB--client\fP=""
+	coding client: claude, codex, gemini, or opencode
+
+.PP
+\fB--fallback\fP=[]
+	exact fallback model IDs tried in order
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for set
+
+.PP
+\fB--model\fP=""
+	exact dynamically discovered model ID
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-profiles(1)\fP

@@ -29,5 +29,6 @@ pmux providers [flags]
 * [pmux providers list](pmux_providers_list.md)	 - List providers
 * [pmux providers login](pmux_providers_login.md)	 - Authenticate or configure a provider
 * [pmux providers remove](pmux_providers_remove.md)	 - Remove provider configuration or one account
+* [pmux providers reset-quota](pmux_providers_reset-quota.md)	 - Reset quota state for one provider account
 * [pmux providers verify](pmux_providers_verify.md)	 - Verify provider credentials
 

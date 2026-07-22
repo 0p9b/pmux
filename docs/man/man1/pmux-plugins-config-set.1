@@ -1,0 +1,43 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-plugins-config-set - Replace a plugin configuration with a JSON object
+
+
+.SH SYNOPSIS
+\fBpmux plugins config set   [flags]\fP
+
+
+.SH DESCRIPTION
+Replace a plugin configuration with a JSON object
+
+
+.SH OPTIONS
+\fB-h\fP, \fB--help\fP[=false]
+	help for set
+
+.PP
+\fB--patch\fP[=false]
+	shallow-merge instead of replace; null values delete keys
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-plugins-config(1)\fP

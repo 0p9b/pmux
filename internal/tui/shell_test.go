@@ -487,3 +487,60 @@ func TestSafeTextUsesSharedMaskShape(t *testing.T) {
 		t.Fatal("safeText retained complete secret")
 	}
 }
+
+func TestLaunchClientPickerCyclesAndReachesHandoff(t *testing.T) {
+	fixture := cachedFixture()
+	facade := &recordingFacade{result: fixture}
+	shell := New(facade, fixture, Options{Plain: true, InitialScreen: Launch})
+
+	want := []string{"codex", "gemini", "opencode", "claude"}
+	for _, expected := range want {
+		updated, _ := update(t, shell, key("c"))
+		shell = updated
+		if got := shell.launchClientOrDefault(); got != expected {
+			t.Fatalf("client after cycle = %q, want %q", got, expected)
+		}
+	}
+	if !strings.Contains(shell.launchView(), "claude") {
+		t.Fatal("launch view does not show the selected client")
+	}
+
+	updated, quit := update(t, shell, key("c"))
+	shell = updated // -> codex
+	if quit != nil {
+		t.Fatal("client picker must not exit the program")
+	}
+	shell, quit = update(t, shell, key("enter"))
+	if quit == nil {
+		t.Fatal("launch did not request Bubble Tea exit")
+	}
+	_ = quit()
+	request, ok := shell.TakeHandoff()
+	if !ok {
+		t.Fatal("deferred launch request was not available after exit")
+	}
+	if request.Options["client"] != "codex" {
+		t.Fatalf("handoff client = %q, want codex", request.Options["client"])
+	}
+	if len(facade.calls) != 0 {
+		t.Fatal("client picker and launch must not invoke the facade before exit")
+	}
+}
+
+func TestLaunchHandoffDefaultsToClaude(t *testing.T) {
+	fixture := cachedFixture()
+	facade := &recordingFacade{result: fixture}
+	shell := New(facade, fixture, Options{Plain: true, InitialScreen: Launch})
+	shell, quit := update(t, shell, key("enter"))
+	if quit == nil {
+		t.Fatal("launch did not request Bubble Tea exit")
+	}
+	_ = quit()
+	request, ok := shell.TakeHandoff()
+	if !ok {
+		t.Fatal("deferred launch request was not available after exit")
+	}
+	if request.Options["client"] != "claude" {
+		t.Fatalf("default handoff client = %q, want claude", request.Options["client"])
+	}
+}

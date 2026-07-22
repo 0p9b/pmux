@@ -4,7 +4,12 @@ import "context"
 
 type ClientID string
 
-const Claude ClientID = "claude"
+const (
+	Claude   ClientID = "claude"
+	Codex    ClientID = "codex"
+	Gemini   ClientID = "gemini"
+	OpenCode ClientID = "opencode"
+)
 
 type ClientInstall struct {
 	Path      string `json:"path"`

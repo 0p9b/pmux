@@ -24,6 +24,8 @@ pmux models [flags]
 ### SEE ALSO
 
 * [pmux](pmux.md)	 - Terminal control plane for CLIProxyAPI
+* [pmux models aliases](pmux_models_aliases.md)	 - Manage per-channel model aliases
+* [pmux models exclusions](pmux_models_exclusions.md)	 - Manage per-channel excluded model patterns
 * [pmux models favorite](pmux_models_favorite.md)	 - favorite an exact model ID
 * [pmux models list](pmux_models_list.md)	 - List dynamically discovered models
 * [pmux models test](pmux_models_test.md)	 - Send one minimal model test

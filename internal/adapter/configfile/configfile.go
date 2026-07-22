@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -485,19 +487,42 @@ func knownPath(parts []string) bool {
 	switch path {
 	case "host", "port", "auth-dir", "ws-auth", "api-keys",
 		"remote-management.allow-remote", "remote-management.disable-control-panel",
-		"remote-management.secret-key", "tls", "tls.enable", "tls.cert", "tls.key",
-		"pgstore", "objectstore", "gitstore", "plugins":
+		"remote-management.secret-key", "remote-management.panel-github-repository",
+		"tls", "tls.enable", "tls.cert", "tls.key",
+		"pgstore", "objectstore", "gitstore", "plugins",
+		"routing.strategy", "routing.session-affinity", "routing.session-affinity-ttl",
+		"quota-exceeded.switch-project", "quota-exceeded.switch-preview-model",
+		"quota-exceeded.antigravity-credits",
+		"request-retry", "max-retry-interval", "max-retry-credentials",
+		"nonstream-keepalive-interval", "transient-error-cooldown-seconds",
+		"streaming.keepalive-seconds", "streaming.bootstrap-retries",
+		"logs-max-total-size-mb", "error-logs-max-files",
+		"codex.identity-confuse",
+		"passthrough-headers", "commercial-mode", "debug", "logging-to-file",
+		"usage-statistics-enabled", "request-log", "force-model-prefix",
+		"disable-cooling", "save-cooldown-status", "disable-claude-cloak-mode",
+		"proxy-url", "disable-image-generation", "video-result-auth-cache-ttl",
+		"payload", "payload.default", "payload.default-raw", "payload.override",
+		"payload.override-raw", "payload.filter",
+		"pprof", "pprof.enable", "pprof.addr",
+		"claude-header-defaults", "codex-header-defaults":
 		return true
 	}
-	// Token-store and plugin fields are intentionally accepted as subtrees but
-	// still classified as restart-required. They are typed by yaml.v3.
-	return len(parts) > 1 && (parts[0] == "pgstore" || parts[0] == "objectstore" || parts[0] == "gitstore" || parts[0] == "plugins")
+	// Token-store, plugin, and header-defaults fields are intentionally accepted
+	// as subtrees but still classified by their root. They are typed by yaml.v3.
+	switch parts[0] {
+	case "pgstore", "objectstore", "gitstore", "plugins",
+		"claude-header-defaults", "codex-header-defaults":
+		return len(parts) > 1
+	}
+	return false
 }
 
 func validateValue(parts []string, value any) error {
 	path := strings.Join(parts, ".")
 	switch path {
-	case "host", "auth-dir", "remote-management.secret-key", "tls.cert", "tls.key":
+	case "host", "auth-dir", "remote-management.secret-key", "tls.cert", "tls.key",
+		"remote-management.panel-github-repository":
 		if _, ok := value.(string); !ok {
 			return fmt.Errorf("%s must be a string", path)
 		}
@@ -506,7 +531,15 @@ func validateValue(parts []string, value any) error {
 		if !ok || v < 1 || v > 65535 {
 			return errors.New("port must be an integer from 1 to 65535")
 		}
-	case "ws-auth", "remote-management.allow-remote", "remote-management.disable-control-panel", "tls.enable":
+	case "ws-auth", "remote-management.allow-remote", "remote-management.disable-control-panel", "tls.enable",
+		"routing.session-affinity",
+		"quota-exceeded.switch-project", "quota-exceeded.switch-preview-model",
+		"quota-exceeded.antigravity-credits",
+		"codex.identity-confuse",
+		"passthrough-headers", "commercial-mode", "debug", "logging-to-file",
+		"usage-statistics-enabled", "request-log", "force-model-prefix",
+		"disable-cooling", "save-cooldown-status", "disable-claude-cloak-mode",
+		"pprof", "pprof.enable":
 		if _, ok := value.(bool); !ok {
 			return fmt.Errorf("%s must be a boolean", path)
 		}
@@ -515,6 +548,67 @@ func validateValue(parts []string, value any) error {
 		case []string, []any:
 		default:
 			return errors.New("api-keys must be a string sequence")
+		}
+	case "routing.strategy":
+		s, ok := value.(string)
+		if !ok || (s != "round-robin" && s != "fill-first") {
+			return errors.New(`routing.strategy must be "round-robin" or "fill-first"`)
+		}
+	case "routing.session-affinity-ttl", "video-result-auth-cache-ttl":
+		s, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%s must be a duration string", path)
+		}
+		if _, err := time.ParseDuration(s); err != nil {
+			return fmt.Errorf("%s must be a valid Go duration: %w", path, err)
+		}
+	case "request-retry", "max-retry-interval", "max-retry-credentials",
+		"nonstream-keepalive-interval",
+		"streaming.keepalive-seconds", "streaming.bootstrap-retries",
+		"logs-max-total-size-mb", "error-logs-max-files":
+		v, ok := integer(value)
+		if !ok || v < 0 {
+			return fmt.Errorf("%s must be an integer >= 0", path)
+		}
+	case "transient-error-cooldown-seconds":
+		v, ok := integer(value)
+		if !ok || v < -1 {
+			return errors.New("transient-error-cooldown-seconds must be an integer >= -1")
+		}
+	case "proxy-url":
+		s, ok := value.(string)
+		if !ok {
+			return errors.New("proxy-url must be a string")
+		}
+		if s != "" {
+			u, err := url.Parse(s)
+			if err != nil || u.Host == "" ||
+				(u.Scheme != "http" && u.Scheme != "https" && u.Scheme != "socks5") {
+				return errors.New("proxy-url must be empty or an absolute http, https, or socks5 URL")
+			}
+		}
+	case "disable-image-generation":
+		switch v := value.(type) {
+		case bool:
+		case string:
+			if v != "chat" && v != "passthrough" {
+				return errors.New(`disable-image-generation must be a boolean or "chat"/"passthrough"`)
+			}
+		default:
+			return errors.New(`disable-image-generation must be a boolean or "chat"/"passthrough"`)
+		}
+	case "payload", "payload.default", "payload.default-raw", "payload.override",
+		"payload.override-raw", "payload.filter":
+		if _, ok := value.([]any); !ok {
+			return fmt.Errorf("%s must be a sequence", path)
+		}
+	case "pprof.addr":
+		s, ok := value.(string)
+		if !ok {
+			return errors.New("pprof.addr must be a string")
+		}
+		if _, _, err := net.SplitHostPort(s); err != nil {
+			return fmt.Errorf("pprof.addr must be a host:port address: %w", err)
 		}
 	}
 	return nil
@@ -555,7 +649,7 @@ func integer(value any) (int, bool) {
 
 func requiresRestart(parts []string) bool {
 	switch parts[0] {
-	case "host", "port", "tls", "pgstore", "objectstore", "gitstore", "plugins":
+	case "host", "port", "tls", "pgstore", "objectstore", "gitstore", "plugins", "pprof":
 		return true
 	default:
 		return false

@@ -34,7 +34,12 @@ func runTUI(ctx context.Context, deps dependencies, flags *globalFlags, request 
 	snapshot.Dashboard.Service = pmuxtui.Status{Kind: pmuxtui.StatusUnknown, Text: "not loaded"}
 	snapshot.Dashboard.Health = pmuxtui.Status{Kind: pmuxtui.StatusUnknown, Text: "not loaded"}
 	if request.Operation == app.OpLaunch {
-		snapshot.Launch.ClientPath = "claude"
+		client, _ := request.Options["client"].(string)
+		if client == "" {
+			client = "claude"
+		}
+		snapshot.Launch.Client = client
+		snapshot.Launch.ClientPath = client
 		snapshot.Launch.ModelID, _ = request.Options["model"].(string)
 		snapshot.Launch.Arguments = append([]string(nil), request.Arguments...)
 	}
@@ -168,6 +173,14 @@ func (f *tuiFacade) Execute(ctx context.Context, request pmuxtui.ActionRequest) 
 		case pmuxtui.ActionModelLaunch, pmuxtui.ActionLaunchRun:
 			if len(request.Arguments) == 0 {
 				return f.snapshot, fmt.Errorf("launch model selection is required")
+			}
+			if client := request.Options["client"]; client != "" {
+				switch client {
+				case "claude", "codex", "gemini", "opencode":
+					options["client"] = client
+				default:
+					return f.snapshot, fmt.Errorf("unsupported launch client %q", client)
+				}
 			}
 			options["model"] = request.Arguments[0]
 			request.Arguments = append([]string(nil), request.Arguments[1:]...)

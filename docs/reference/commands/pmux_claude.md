@@ -1,6 +1,6 @@
 ## pmux claude
 
-Launch Claude Code with an exact model
+Launch claude with an exact model
 
 ```
 pmux claude <id> [-- <claude args>] [flags]

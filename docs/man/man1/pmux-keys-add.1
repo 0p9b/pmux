@@ -1,0 +1,51 @@
+.nh
+.TH "PMUX" "1" "Jul 2026" "PMux" "PMux Manual"
+
+.SH NAME
+pmux-keys-add - Add a client API key
+
+
+.SH SYNOPSIS
+\fBpmux keys add [flags]\fP
+
+
+.SH DESCRIPTION
+Add a client API key
+
+
+.SH OPTIONS
+\fB--api-key-file\fP=""
+	read the key from a private file
+
+.PP
+\fB--api-key-stdin\fP[=false]
+	read the key from standard input
+
+.PP
+\fB--generate\fP[=false]
+	generate a random key and show it once
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for add
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--config-dir\fP=""
+	override the PMux config root
+
+.PP
+\fB--json\fP[=false]
+	emit machine-readable JSON or NDJSON
+
+.PP
+\fB--verbose\fP[=false]
+	write safe diagnostic details to stderr
+
+.PP
+\fB--yes\fP[=false]
+	accept the command's defined confirmation
+
+
+.SH SEE ALSO
+\fBpmux-keys(1)\fP

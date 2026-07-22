@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strconv"
 	"strings"
@@ -49,6 +50,7 @@ type Shell struct {
 	pendingArgs     []string
 	pendingSecret   []byte
 	handoff         *ActionRequest
+	launchClient    string
 	protectedWriter *io.PipeWriter
 	confirm         string
 	palette         palette
@@ -112,6 +114,7 @@ func (m *Shell) TakeHandoff() (ActionRequest, bool) {
 	request := ActionRequest{
 		ID:        m.handoff.ID,
 		Arguments: append([]string(nil), m.handoff.Arguments...),
+		Options:   maps.Clone(m.handoff.Options),
 	}
 	m.handoff = nil
 	return request, true
@@ -330,6 +333,32 @@ func (m *Shell) updateConfirmation(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// launchClients is the fixed cycle order for the Launch screen client picker.
+var launchClients = []string{"claude", "codex", "gemini", "opencode"}
+
+func (m *Shell) launchClientOrDefault() string {
+	if m.launchClient != "" {
+		return m.launchClient
+	}
+	if m.snapshot.Launch.Client != "" {
+		return m.snapshot.Launch.Client
+	}
+	return "claude"
+}
+
+func (m *Shell) cycleLaunchClient() {
+	current := m.launchClientOrDefault()
+	next := launchClients[0]
+	for index, candidate := range launchClients {
+		if candidate == current {
+			next = launchClients[(index+1)%len(launchClients)]
+			break
+		}
+	}
+	m.launchClient = next
+	m.lastErr = ""
+}
+
 func (m *Shell) request(id ActionID) (tea.Model, tea.Cmd) {
 	meta, ok := Action(id)
 	if !ok {
@@ -346,6 +375,10 @@ func (m *Shell) request(id ActionID) (tea.Model, tea.Cmd) {
 	}
 	if id == ActionConfigSet && m.selectedConfigSensitive() {
 		m.lastErr = "Sensitive proxy fields cannot be entered here; use the protected provider login flow."
+		return m, nil
+	}
+	if id == ActionLaunchClient {
+		m.cycleLaunchClient()
 		return m, nil
 	}
 	if id == ActionProviderLogin {
@@ -387,7 +420,7 @@ func (m *Shell) executeWithArguments(id ActionID, arguments []string, secret []b
 		return m, nil
 	}
 	if isLaunchHandoff(id) {
-		request := ActionRequest{ID: id, Arguments: append([]string(nil), arguments...)}
+		request := ActionRequest{ID: id, Arguments: append([]string(nil), arguments...), Options: map[string]string{"client": m.launchClientOrDefault()}}
 		clearSecret(secret)
 		m.handoff = &request
 		m.lastErr = ""
@@ -592,6 +625,8 @@ func (m *Shell) actionForKey(key string) (ActionID, bool) {
 		switch key {
 		case "enter":
 			return ActionLaunchRun, true
+		case "c":
+			return ActionLaunchClient, true
 		case "p":
 			return ActionLaunchPersist, true
 		case "d":
@@ -923,7 +958,11 @@ func (m *Shell) modelsView() string {
 func (m *Shell) launchView() string {
 	v := m.snapshot.Launch
 	var b strings.Builder
-	line(&b, "Client", joinNonempty(v.ClientVersion, v.ClientPath))
+	clientLabel := m.launchClientOrDefault()
+	if detail := joinNonempty(v.ClientVersion, v.ClientPath); detail != "" {
+		clientLabel += " (" + detail + ")"
+	}
+	line(&b, "Client", clientLabel)
 	line(&b, "Model", v.ModelID)
 	line(&b, "Provider", defaultText(v.Provider, "Unknown"))
 	line(&b, "Proxy", v.BaseURL)

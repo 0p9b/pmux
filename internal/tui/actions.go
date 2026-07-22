@@ -51,6 +51,7 @@ const (
 	ActionModelLaunch     ActionID = "models.launch"
 
 	ActionLaunchRun     ActionID = "launch.run"
+	ActionLaunchClient  ActionID = "launch.client"
 	ActionLaunchPersist ActionID = "launch.persist"
 	ActionLaunchDoctor  ActionID = "launch.doctor"
 
@@ -127,8 +128,9 @@ var actionCatalog = []ActionMeta{
 	{ActionModelTest, Models, "t", "test", []string{"pmux", "models", "test", "<model>"}, false, false},
 	{ActionModelFavorite, Models, "f", "favorite", []string{"pmux", "models", "favorite", "<model>"}, true, false},
 	{ActionModelUnfavorite, Models, "f", "unfavorite", []string{"pmux", "models", "unfavorite", "<model>"}, true, false},
-	{ActionModelLaunch, Models, "l", "launch", []string{"pmux", "launch", "--client", "claude", "--model", "<model>"}, false, true},
-	{ActionLaunchRun, Launch, "enter", "launch", []string{"pmux", "launch", "--client", "claude", "--model", "<model>"}, false, true},
+	{ActionModelLaunch, Models, "l", "launch", []string{"pmux", "launch", "--client", "<client>", "--model", "<model>"}, false, true},
+	{ActionLaunchRun, Launch, "enter", "launch", []string{"pmux", "launch", "--client", "<client>", "--model", "<model>"}, false, true},
+	{ActionLaunchClient, Launch, "c", "client", []string{"pmux", "launch", "--client", "<claude|codex|gemini|opencode>", "--model", "<model>"}, false, false},
 	{ActionLaunchPersist, Launch, "p", "persistent slots", []string{"pmux", "config", "--scope", "pmux", "set", "integrations.claude.persistent-models.<slot>", "<model|unmanaged>"}, true, false},
 	{ActionLaunchDoctor, Launch, "d", "doctor", []string{"pmux", "doctor"}, false, false},
 	{ActionDoctorRun, Doctor, "r", "rerun", []string{"pmux", "doctor"}, false, false},

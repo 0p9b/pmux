@@ -120,6 +120,101 @@ type APICallResponse struct {
 	Headers map[string][]string
 	Body    []byte
 }
+type PluginConfigField struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	EnumValues  []string `json:"enum_values,omitempty"`
+	Description string   `json:"description,omitempty"`
+}
+type PluginMenu struct {
+	Path        string `json:"path"`
+	Menu        string `json:"menu"`
+	Description string `json:"description,omitempty"`
+}
+type PluginMetadata struct {
+	Name             string `json:"name,omitempty"`
+	Version          string `json:"version,omitempty"`
+	Author           string `json:"author,omitempty"`
+	GitHubRepository string `json:"github_repository,omitempty"`
+	Logo             string `json:"logo,omitempty"`
+}
+type PluginInfo struct {
+	ID               string              `json:"id"`
+	Path             string              `json:"path,omitempty"`
+	Configured       bool                `json:"configured"`
+	Registered       bool                `json:"registered"`
+	Enabled          bool                `json:"enabled"`
+	EffectiveEnabled bool                `json:"effective_enabled"`
+	SupportsOAuth    bool                `json:"supports_oauth"`
+	OAuthProvider    string              `json:"oauth_provider,omitempty"`
+	Logo             string              `json:"logo,omitempty"`
+	ConfigFields     []PluginConfigField `json:"config_fields,omitempty"`
+	Menus            []PluginMenu        `json:"menus,omitempty"`
+	Metadata         PluginMetadata      `json:"metadata,omitempty"`
+}
+type PluginList struct {
+	PluginsEnabled bool         `json:"plugins_enabled"`
+	PluginsDir     string       `json:"plugins_dir"`
+	Plugins        []PluginInfo `json:"plugins"`
+}
+type StoreSource struct {
+	ID   string `json:"id"`
+	Name string `json:"name,omitempty"`
+	URL  string `json:"url,omitempty"`
+}
+type StoreSourceError struct {
+	SourceID   string `json:"source_id"`
+	SourceName string `json:"source_name,omitempty"`
+	SourceURL  string `json:"source_url,omitempty"`
+	Message    string `json:"message,omitempty"`
+}
+type StorePluginPlatform struct {
+	GOOS   string `json:"goos"`
+	GOARCH string `json:"goarch"`
+}
+type StorePlugin struct {
+	StoreID          string                `json:"store_id,omitempty"`
+	SourceID         string                `json:"source_id,omitempty"`
+	SourceName       string                `json:"source_name,omitempty"`
+	ID               string                `json:"id"`
+	Name             string                `json:"name,omitempty"`
+	Description      string                `json:"description,omitempty"`
+	Author           string                `json:"author,omitempty"`
+	Version          string                `json:"version,omitempty"`
+	Repository       string                `json:"repository,omitempty"`
+	InstallType      string                `json:"install_type,omitempty"`
+	AuthRequired     bool                  `json:"auth_required"`
+	AuthConfigured   bool                  `json:"auth_configured"`
+	Platforms        []StorePluginPlatform `json:"platforms,omitempty"`
+	Homepage         string                `json:"homepage,omitempty"`
+	License          string                `json:"license,omitempty"`
+	Tags             []string              `json:"tags,omitempty"`
+	Installed        bool                  `json:"installed"`
+	InstalledVersion string                `json:"installed_version,omitempty"`
+	UpdateAvailable  bool                  `json:"update_available"`
+}
+type PluginStoreList struct {
+	PluginsEnabled bool               `json:"plugins_enabled"`
+	PluginsDir     string             `json:"plugins_dir"`
+	Sources        []StoreSource      `json:"sources"`
+	SourceErrors   []StoreSourceError `json:"source_errors,omitempty"`
+	Plugins        []StorePlugin      `json:"plugins"`
+}
+type PluginInstallResult struct {
+	Status          string `json:"status"`
+	ID              string `json:"id"`
+	Version         string `json:"version,omitempty"`
+	Path            string `json:"path,omitempty"`
+	PluginsEnabled  bool   `json:"plugins_enabled"`
+	RestartRequired bool   `json:"restart_required"`
+}
+type PluginDeleteResult struct {
+	ID              string `json:"id"`
+	Path            string `json:"path,omitempty"`
+	FileDeleted     bool   `json:"file_deleted"`
+	ConfigRemoved   bool   `json:"configured_removed"`
+	RestartRequired bool   `json:"restart_required"`
+}
 
 const (
 	ProviderGemini           ProviderKeyKind = "gemini-api-key"
@@ -179,4 +274,12 @@ type ManagementClient interface {
 	ResetQuota(context.Context, ResetQuotaRequest) error
 	LatestVersion(context.Context) (string, error)
 	APICall(context.Context, APICallRequest) (APICallResponse, error)
+	Plugins(context.Context) (PluginList, error)
+	PluginStore(context.Context) (PluginStoreList, error)
+	InstallPlugin(context.Context, string, string, string) (PluginInstallResult, error)
+	SetPluginEnabled(context.Context, string, bool) error
+	PluginConfig(context.Context, string) (map[string]any, error)
+	PutPluginConfig(context.Context, string, map[string]any) error
+	PatchPluginConfig(context.Context, string, map[string]any) error
+	DeletePlugin(context.Context, string) (PluginDeleteResult, error)
 }

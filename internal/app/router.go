@@ -132,6 +132,7 @@ type Dependencies struct {
 	Input             io.Reader
 	Output            io.Writer
 	VerifyPrivateFile func(string) error
+	OpenURL           func(context.Context, string) error
 	ReadPassword      func(context.Context, string) ([]byte, error)
 	WorkingDir        func() (string, error)
 	Now               func() time.Time
@@ -210,10 +211,16 @@ func (r *Router) Execute(ctx context.Context, in Invocation, sink EventSink) (Re
 		return r.providersVerify(ctx, in, installation, configured)
 	case OpProvidersEnable, OpProvidersDisable, OpProvidersRemove:
 		return r.providerMutation(ctx, in, installation, configured)
+	case OpProvidersResetQuota:
+		return r.providerResetQuota(ctx, in, installation, configured)
 	case OpModelsList, OpTUIModels:
 		return r.modelsList(ctx, in, installation, configured)
 	case OpModelsFavorite, OpModelsUnfavorite:
 		return r.modelFavorite(in, st)
+	case OpModelsAliases:
+		return r.modelsAliases(ctx, in, sink, installation, configured)
+	case OpModelsExclusions:
+		return r.modelsExclusions(ctx, in, sink, installation, configured)
 	case OpModelsTest:
 		return r.modelTest(ctx, in, installation, configured)
 	case OpServiceStatus, OpTUIService:
@@ -238,6 +245,18 @@ func (r *Router) Execute(ctx context.Context, in Invocation, sink EventSink) (Re
 		return r.doctor(ctx, in, installation, configured)
 	case OpUpdateCheck, OpUpdateSelf, OpUpdateProxy:
 		return r.update(ctx, in, installation, configured)
+	case OpKeysList, OpKeysAdd, OpKeysRemove:
+		return r.keys(ctx, in, sink, installation, configured)
+	case OpPluginsList, OpPluginStore, OpPluginInstall, OpPluginSetEnabled, OpPluginConfigShow, OpPluginConfigSet, OpPluginRemove:
+		return r.plugins(ctx, in, sink, installation, configured)
+	case OpPanel:
+		return r.panel(ctx, in, installation, configured)
+	case OpProfilesList, OpProfilesShow:
+		return r.profilesList(in, cfg)
+	case OpProfilesSet:
+		return r.profileSet(in, cfg)
+	case OpProfilesRemove:
+		return r.profileRemove(in, cfg)
 	default:
 		return Result{}, typedUsage(fmt.Sprintf("Unsupported application operation %q.", in.Operation))
 	}
@@ -1323,6 +1342,11 @@ func (r *Router) configShow(ctx context.Context, in Invocation, pmuxConfig state
 		for name := range managementSettingKinds {
 			activation[name] = "hot_reload"
 		}
+		for name := range proxyFileValueKinds {
+			activation[name] = "hot_reload"
+		}
+		activation["pprof.enable"] = "restart_required"
+		activation["pprof.addr"] = "restart_required"
 		data["effective"] = map[string]any{
 			"source":        filepath.Clean(installation.ConfigPath),
 			"activation":    activation,
@@ -1747,6 +1771,8 @@ type launchReadiness struct {
 	launcher domainclient.ClientLauncher
 	install  domainclient.ClientInstall
 	model    string
+	client   string
+	args     []string
 	cwd      string
 }
 
@@ -1763,7 +1789,7 @@ func (r *Router) launchPreflight(ctx context.Context, in Invocation, installatio
 			"working_dir": ready.cwd,
 			"base_url":    baseURL(installation),
 		},
-		Human: []string{fmt.Sprintf("Claude Code %s is ready with exact model %s.", ready.install.Version, ready.model)},
+		Human: []string{fmt.Sprintf("%s %s is ready with exact model %s.", clientName(ready.client), ready.install.Version, ready.model)},
 	}, nil
 }
 
@@ -1773,7 +1799,7 @@ func (r *Router) launch(ctx context.Context, in Invocation, installation state.I
 		return Result{}, err
 	}
 	if r.deps.Secrets == nil {
-		return Result{}, dependencyError("Claude launch infrastructure is unavailable.", "Run `pmux doctor` to inspect the proxy-key dependency.")
+		return Result{}, dependencyError("Client launch infrastructure is unavailable.", "Run `pmux doctor` to inspect the proxy-key dependency.")
 	}
 	token, err := r.deps.Secrets(ctx, installation)
 	if err != nil {
@@ -1781,36 +1807,62 @@ func (r *Router) launch(ctx context.Context, in Invocation, installation state.I
 	}
 	defer clearBytes(token)
 	spec := domainclient.LaunchSpec{
-		Client: domainclient.Claude, Model: ready.model, BaseURL: baseURL(installation),
-		Token: string(token), Args: append([]string(nil), in.Arguments...), WorkingDir: ready.cwd,
+		Client: domainclient.ClientID(ready.client), Model: ready.model, BaseURL: baseURL(installation),
+		Token: string(token), Args: ready.args, WorkingDir: ready.cwd,
 	}
 	launchResult, err := ready.launcher.Launch(ctx, spec)
 	if err != nil {
-		return Result{}, ensureTyped(err, "Claude Code could not be launched.")
+		return Result{}, ensureTyped(err, fmt.Sprintf("%s could not be launched.", clientName(ready.client)))
 	}
-	data := map[string]any{"client": "claude", "model": ready.model, "origin": "client", "exit_code": launchResult.ExitCode}
+	data := map[string]any{"client": ready.client, "model": ready.model, "origin": "client", "exit_code": launchResult.ExitCode}
 	if launchResult.Signal != "" {
 		data["signal"] = launchResult.Signal
 	}
-	human := []string{"Claude Code exited."}
+	human := []string{fmt.Sprintf("%s exited.", clientName(ready.client))}
 	if launchResult.ExitCode != 0 {
-		human = []string{fmt.Sprintf("Claude Code exited with status %d.", launchResult.ExitCode)}
+		human = []string{fmt.Sprintf("%s exited with status %d.", clientName(ready.client), launchResult.ExitCode)}
 	}
 	return Result{Data: data, Human: human, ExitCode: launchResult.ExitCode}, nil
 }
 
 func (r *Router) prepareLaunch(ctx context.Context, in Invocation, installation state.Installation, configured bool) (launchReadiness, error) {
 	if !configured {
-		return launchReadiness{}, notConfigured("launch Claude Code", "Run `pmux setup --mode managed`, authenticate a provider, and select a live model.")
+		return launchReadiness{}, notConfigured("launch a coding client", "Run `pmux setup --mode managed`, authenticate a provider, and select a live model.")
 	}
 	clientID := optionString(in, "client")
+	modelID := optionString(in, "model")
+	fallback := optionStrings(in, "fallback")
+	args := append([]string(nil), in.Arguments...)
+	if profileName := optionString(in, "profile"); profileName != "" {
+		cfg, err := r.deps.Store.LoadConfig()
+		if err != nil {
+			return launchReadiness{}, normalize(err, pmuxerr.ConfigUnreadable, "PMux could not load its versioned configuration.")
+		}
+		profile, ok := cfg.Profiles[profileName]
+		if !ok {
+			return launchReadiness{}, typedUsage(fmt.Sprintf("Profile %q is not defined. Run `pmux profiles list`.", profileName))
+		}
+		if clientID == "" {
+			clientID = profile.Client
+		}
+		if modelID == "" {
+			modelID = profile.Model
+		}
+		if len(fallback) == 0 {
+			fallback = append([]string(nil), profile.Fallback...)
+		}
+		if len(args) == 0 {
+			args = append([]string(nil), profile.Args...)
+		}
+	}
 	if clientID == "" {
 		clientID = "claude"
 	}
-	if clientID != "claude" {
-		return launchReadiness{}, typedUsage("Claude Code is the only supported client in PMux v1.")
+	switch domainclient.ClientID(clientID) {
+	case domainclient.Claude, domainclient.Codex, domainclient.Gemini, domainclient.OpenCode:
+	default:
+		return launchReadiness{}, typedUsage(fmt.Sprintf("Unsupported client %q; supported clients are claude, codex, gemini, and opencode.", clientID))
 	}
-	modelID := optionString(in, "model")
 	if modelID == "" {
 		return launchReadiness{}, typedUsage("Launch requires an exact dynamic model ID.")
 	}
@@ -1822,46 +1874,83 @@ func (r *Router) prepareLaunch(ctx context.Context, in Invocation, installation 
 	if err != nil {
 		return launchReadiness{}, ensureTyped(err, "Launch requires a live model refresh.")
 	}
-	found := false
-	for _, entry := range entries {
-		if entry.ID != modelID {
-			continue
+	candidates := append([]string{modelID}, fallback...)
+	selected := ""
+	staleSelected := false
+	for _, candidate := range candidates {
+		for _, entry := range entries {
+			if entry.ID != candidate {
+				continue
+			}
+			if entry.Available {
+				selected = candidate
+				if entry.Stale {
+					staleSelected = true
+				}
+			}
+			break
 		}
-		if entry.Stale {
-			staleErr := pmuxerr.New(pmuxerr.ManagementUnreachable, pmuxerr.Environment, "Launch requires live model availability, but the matching catalog entry is stale.")
-			staleErr.Repair = []string{"Restore CLIProxyAPI connectivity, then run `pmux models list --refresh` before launching."}
-			return launchReadiness{}, staleErr
+		if selected != "" {
+			break
 		}
-		if entry.Available {
-			found = true
-		}
-		break
 	}
-	if !found {
-		return launchReadiness{}, unhealthy(fmt.Sprintf("Model %q is not currently served.", modelID), "Run `pmux models list --refresh` and choose an exact returned ID.")
+	if selected == "" {
+		return launchReadiness{}, unhealthy(fmt.Sprintf("Model %q is not currently served.", modelID), "Run `pmux models list --refresh` and choose an exact returned ID, or configure fallback models with `pmux profiles set`.")
 	}
+	if staleSelected {
+		staleErr := pmuxerr.New(pmuxerr.ManagementUnreachable, pmuxerr.Environment, "Launch requires live model availability, but the matching catalog entry is stale.")
+		staleErr.Repair = []string{"Restore CLIProxyAPI connectivity, then run `pmux models list --refresh` before launching."}
+		return launchReadiness{}, staleErr
+	}
+	modelID = selected
 	if r.deps.Launcher == nil {
-		return launchReadiness{}, dependencyError("Claude launch infrastructure is unavailable.", "Run `pmux doctor` to inspect the client dependency.")
+		return launchReadiness{}, dependencyError("Client launch infrastructure is unavailable.", "Run `pmux doctor` to inspect the client dependency.")
 	}
-	launcher, err := r.deps.Launcher(ctx, installation, in)
+	launchIn := in
+	launchIn.Options = cloneOptions(in.Options)
+	launchIn.Options["client"] = clientID
+	launcher, err := r.deps.Launcher(ctx, installation, launchIn)
 	if err != nil {
-		return launchReadiness{}, ensureTyped(err, "Claude launch could not be prepared.")
+		return launchReadiness{}, ensureTyped(err, "Client launch could not be prepared.")
 	}
 	install, err := launcher.Detect(ctx)
 	if err != nil {
-		return launchReadiness{}, ensureTyped(err, "Claude Code v2.0.0 or newer was not found.")
+		return launchReadiness{}, ensureTyped(err, fmt.Sprintf("The %s client was not found.", clientName(clientID)))
 	}
 	if !install.Supported {
 		return launchReadiness{}, dependencyError(
-			fmt.Sprintf("Claude Code %s is unsupported; PMux requires Claude Code v2.0.0 or newer.", valueOr(install.Version, "version unknown")),
-			"Install or upgrade Claude Code, then run `pmux doctor`.",
+			fmt.Sprintf("%s %s is unsupported by this PMux build.", clientName(clientID), valueOr(install.Version, "version unknown")),
+			"Install or upgrade the client, then run `pmux doctor`.",
 		)
 	}
 	cwd, err := r.deps.WorkingDir()
 	if err != nil {
 		return launchReadiness{}, normalize(err, pmuxerr.ConfigPathMismatch, "The launch working directory is unavailable.")
 	}
-	return launchReadiness{launcher: launcher, install: install, model: modelID, cwd: cwd}, nil
+	return launchReadiness{launcher: launcher, install: install, model: modelID, client: clientID, args: args, cwd: cwd}, nil
+}
+
+func clientName(id string) string {
+	switch domainclient.ClientID(id) {
+	case domainclient.Claude:
+		return "Claude Code"
+	case domainclient.Codex:
+		return "Codex"
+	case domainclient.Gemini:
+		return "Gemini CLI"
+	case domainclient.OpenCode:
+		return "OpenCode"
+	default:
+		return id
+	}
+}
+
+func cloneOptions(options map[string]any) map[string]any {
+	out := make(map[string]any, len(options)+1)
+	for key, value := range options {
+		out[key] = value
+	}
+	return out
 }
 
 func (r *Router) doctor(ctx context.Context, in Invocation, installation state.Installation, configured bool) (Result, error) {
@@ -2378,7 +2467,97 @@ func parseProxyValue(key, raw string) (any, error) {
 		}
 		return value, nil
 	default:
+		return parseExtendedProxyValue(key, raw)
+	}
+}
+
+// proxyFileValueKinds classifies extended CLIProxyAPI config-file keys that
+// are patched through the config-file adapter rather than the Management API.
+type proxyFileValueKind string
+
+const (
+	proxyFileBool     proxyFileValueKind = "bool"
+	proxyFileInt      proxyFileValueKind = "int"
+	proxyFileCooldown proxyFileValueKind = "cooldown"
+	proxyFileString   proxyFileValueKind = "string"
+	proxyFileDuration proxyFileValueKind = "duration"
+	proxyFileSequence proxyFileValueKind = "sequence"
+)
+
+var proxyFileValueKinds = map[string]proxyFileValueKind{
+	"routing.session-affinity":                  proxyFileBool,
+	"routing.session-affinity-ttl":              proxyFileDuration,
+	"quota-exceeded.antigravity-credits":        proxyFileBool,
+	"max-retry-credentials":                     proxyFileInt,
+	"transient-error-cooldown-seconds":          proxyFileCooldown,
+	"nonstream-keepalive-interval":              proxyFileInt,
+	"streaming.keepalive-seconds":               proxyFileInt,
+	"streaming.bootstrap-retries":               proxyFileInt,
+	"codex.identity-confuse":                    proxyFileBool,
+	"passthrough-headers":                       proxyFileBool,
+	"commercial-mode":                           proxyFileBool,
+	"disable-cooling":                           proxyFileBool,
+	"save-cooldown-status":                      proxyFileBool,
+	"disable-claude-cloak-mode":                 proxyFileBool,
+	"disable-image-generation":                  proxyFileString,
+	"video-result-auth-cache-ttl":               proxyFileDuration,
+	"remote-management.panel-github-repository": proxyFileString,
+	"payload.default":                           proxyFileSequence,
+	"payload.default-raw":                       proxyFileSequence,
+	"payload.override":                          proxyFileSequence,
+	"payload.override-raw":                      proxyFileSequence,
+	"payload.filter":                            proxyFileSequence,
+	"pprof.enable":                              proxyFileBool,
+	"pprof.addr":                                proxyFileString,
+}
+
+func parseExtendedProxyValue(key, raw string) (any, error) {
+	kind, ok := proxyFileValueKinds[key]
+	if !ok {
 		return nil, typedConfig(fmt.Sprintf("Unknown or unsupported proxy setting %q.", key), "Run `pmux config show` to list supported settings.")
+	}
+	switch kind {
+	case proxyFileBool:
+		value, err := strconv.ParseBool(raw)
+		if err != nil {
+			return nil, typedUsage(key + " must be true or false.")
+		}
+		return value, nil
+	case proxyFileInt:
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < 0 {
+			return nil, typedUsage(key + " must be a nonnegative integer.")
+		}
+		return value, nil
+	case proxyFileCooldown:
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < -1 {
+			return nil, typedUsage(key + " must be -1 or a nonnegative integer.")
+		}
+		return value, nil
+	case proxyFileDuration:
+		if _, err := time.ParseDuration(raw); err != nil {
+			return nil, typedUsage(key + " must be a duration such as 30s or 1h.")
+		}
+		return raw, nil
+	case proxyFileSequence:
+		var value []any
+		if err := json.Unmarshal([]byte(raw), &value); err != nil {
+			return nil, typedUsage(key + " must be a JSON array of rewrite rules.")
+		}
+		return value, nil
+	case proxyFileString:
+		if key == "disable-image-generation" {
+			if parsed, err := strconv.ParseBool(raw); err == nil {
+				return parsed, nil
+			}
+			if raw != "chat" && raw != "passthrough" {
+				return nil, typedUsage("disable-image-generation must be true, false, chat, or passthrough.")
+			}
+		}
+		return raw, nil
+	default:
+		return nil, typedConfig(fmt.Sprintf("Unsupported proxy setting %q.", key), "")
 	}
 }
 

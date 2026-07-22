@@ -12,7 +12,12 @@ The supported accessibility baseline is complete CLI and machine-readable parity
 | Adoption hardening | same command plus `--harden` and global `--yes` | add global `--json` |
 | Provider browse/auth/verify/manage | matching `pmux providers` subcommand | finite JSON or auth NDJSON |
 | Model browse/test/favorite | matching `pmux models` subcommand | finite JSON |
-| Claude launch | `pmux launch --client claude --model <id>` | use finite status/model/doctor JSON for automation; attached client owns terminal streams |
+| Coding client launch | `pmux launch --client <claude\|codex\|gemini\|opencode> --model <id>` or `pmux profiles` + `pmux launch --profile <name>` | use finite status/model/doctor JSON for automation; attached client owns terminal streams |
+| Client API keys | `pmux keys list\|add\|remove` | finite JSON; a generated key is returned once in the add response |
+| Model aliases/exclusions | `pmux models aliases ...`, `pmux models exclusions ...` | finite JSON |
+| Quota reset | `pmux providers reset-quota <auth-file>` | finite JSON |
+| Plugins | `pmux plugins list\|store\|install\|enable\|disable\|config\|remove` | finite JSON |
+| Management panel | `pmux panel [--open]` | finite JSON; browser open is TTY-only |
 | Doctor checks/fixes/bundle | `pmux doctor [--check ...] [--fix ...] [--bundle ...]` | finite JSON |
 | Service lifecycle/status | matching `pmux service` subcommand | finite JSON |
 | Log browse/follow/export/clear | `pmux service logs` flags | NDJSON for `--follow`, finite JSON otherwise |

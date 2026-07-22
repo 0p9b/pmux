@@ -55,6 +55,36 @@ PMux and CLIProxyAPI release archives are fetched over HTTPS and matched against
 
 Checksums and archives share GitHub Releases as the trust anchor; when an upstream project publishes no independent signature, PMux does not claim the checksum proves protection from a compromised release account. Updates remain manual and retain a verified rollback target.
 
+## Client API keys, panel, and plugins
+
+Client API keys gate every proxy request. PMux manages them through the Management API without ever printing stored values:
+
+```sh
+pmux keys list
+pmux keys add --generate        # shown once, then only masked
+pmux keys add --api-key-stdin   # or --api-key-file <private path>
+pmux keys remove <fingerprint>
+```
+
+A key created with `--generate` is returned exactly once in the add response because it exists nowhere else yet; afterwards it appears only masked with its fingerprint and request count.
+
+`pmux panel` prints the loopback CLIProxyAPI control-panel URL (`/management.html`); `--open` hands it to the system browser. The panel stays bound to loopback under managed setup.
+
+CLIProxyAPI plugins are trusted native code executed inside the core process. PMux exposes their lifecycle explicitly, never implicitly:
+
+```sh
+pmux plugins list
+pmux plugins store
+pmux plugins install <plugin> [--source <source>] [--version <version>]
+pmux plugins enable <plugin>
+pmux plugins disable <plugin>
+pmux plugins config show <plugin>
+pmux plugins config set <plugin> '{"priority":1}' [--patch]
+pmux plugins remove <plugin>
+```
+
+Install, state, config, and removal mutations require confirmation or global `--yes`; a plugin that cannot unload reports its restart requirement instead of pretending success.
+
 ## Threat summary
 
 PMux specifically mitigates malicious config/base URLs, archive substitution in transit, other-user file reads, terminal-control text from providers, shell-history leakage, exposed callback listeners, diagnostic leakage, accidental network exposure, wide SSH authority, and lifecycle/config rollback failures.

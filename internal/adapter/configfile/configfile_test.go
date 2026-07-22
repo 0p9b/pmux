@@ -314,6 +314,184 @@ func TestRestartRequiredClassification(t *testing.T) {
 	}
 }
 
+func TestPlanExtendedConfigSurface(t *testing.T) {
+	boolValue := true
+	tests := []struct {
+		name        string
+		op          domainconfig.PatchOp
+		wantErr     bool
+		wantRestart bool
+	}{
+		// routing
+		{"strategy round-robin", domainconfig.PatchOp{Path: "routing.strategy", Value: "round-robin"}, false, false},
+		{"strategy fill-first", domainconfig.PatchOp{Path: "routing.strategy", Value: "fill-first"}, false, false},
+		{"strategy unknown enum", domainconfig.PatchOp{Path: "routing.strategy", Value: "random"}, true, false},
+		{"strategy wrong type", domainconfig.PatchOp{Path: "routing.strategy", Value: 1}, true, false},
+		{"session affinity", domainconfig.PatchOp{Path: "routing.session-affinity", Value: boolValue}, false, false},
+		{"session affinity wrong type", domainconfig.PatchOp{Path: "routing.session-affinity", Value: "true"}, true, false},
+		{"session affinity ttl", domainconfig.PatchOp{Path: "routing.session-affinity-ttl", Value: "1h"}, false, false},
+		{"session affinity ttl invalid", domainconfig.PatchOp{Path: "routing.session-affinity-ttl", Value: "not-a-duration"}, true, false},
+		{"session affinity ttl wrong type", domainconfig.PatchOp{Path: "routing.session-affinity-ttl", Value: 60}, true, false},
+		// quota-exceeded
+		{"quota switch project", domainconfig.PatchOp{Path: "quota-exceeded.switch-project", Value: boolValue}, false, false},
+		{"quota switch project wrong type", domainconfig.PatchOp{Path: "quota-exceeded.switch-project", Value: 1}, true, false},
+		{"quota switch preview model", domainconfig.PatchOp{Path: "quota-exceeded.switch-preview-model", Value: false}, false, false},
+		{"quota switch preview model wrong type", domainconfig.PatchOp{Path: "quota-exceeded.switch-preview-model", Value: "yes"}, true, false},
+		{"quota antigravity credits", domainconfig.PatchOp{Path: "quota-exceeded.antigravity-credits", Value: boolValue}, false, false},
+		{"quota antigravity credits wrong type", domainconfig.PatchOp{Path: "quota-exceeded.antigravity-credits", Value: 0}, true, false},
+		// non-negative integers
+		{"request retry", domainconfig.PatchOp{Path: "request-retry", Value: 3}, false, false},
+		{"request retry negative", domainconfig.PatchOp{Path: "request-retry", Value: -1}, true, false},
+		{"request retry wrong type", domainconfig.PatchOp{Path: "request-retry", Value: "3"}, true, false},
+		{"max retry interval", domainconfig.PatchOp{Path: "max-retry-interval", Value: 30}, false, false},
+		{"max retry interval negative", domainconfig.PatchOp{Path: "max-retry-interval", Value: -2}, true, false},
+		{"max retry credentials", domainconfig.PatchOp{Path: "max-retry-credentials", Value: 0}, false, false},
+		{"max retry credentials wrong type", domainconfig.PatchOp{Path: "max-retry-credentials", Value: 1.5}, true, false},
+		{"nonstream keepalive", domainconfig.PatchOp{Path: "nonstream-keepalive-interval", Value: 15}, false, false},
+		{"nonstream keepalive negative", domainconfig.PatchOp{Path: "nonstream-keepalive-interval", Value: -1}, true, false},
+		{"streaming keepalive", domainconfig.PatchOp{Path: "streaming.keepalive-seconds", Value: 10}, false, false},
+		{"streaming keepalive negative", domainconfig.PatchOp{Path: "streaming.keepalive-seconds", Value: -5}, true, false},
+		{"streaming bootstrap retries", domainconfig.PatchOp{Path: "streaming.bootstrap-retries", Value: 2}, false, false},
+		{"streaming bootstrap retries wrong type", domainconfig.PatchOp{Path: "streaming.bootstrap-retries", Value: boolValue}, true, false},
+		{"logs max total size", domainconfig.PatchOp{Path: "logs-max-total-size-mb", Value: 512}, false, false},
+		{"logs max total size negative", domainconfig.PatchOp{Path: "logs-max-total-size-mb", Value: -1}, true, false},
+		{"error logs max files", domainconfig.PatchOp{Path: "error-logs-max-files", Value: 20}, false, false},
+		{"error logs max files wrong type", domainconfig.PatchOp{Path: "error-logs-max-files", Value: "20"}, true, false},
+		// transient-error-cooldown-seconds allows -1
+		{"transient cooldown minus one", domainconfig.PatchOp{Path: "transient-error-cooldown-seconds", Value: -1}, false, false},
+		{"transient cooldown zero", domainconfig.PatchOp{Path: "transient-error-cooldown-seconds", Value: 0}, false, false},
+		{"transient cooldown too low", domainconfig.PatchOp{Path: "transient-error-cooldown-seconds", Value: -2}, true, false},
+		// boolean toggles
+		{"codex identity confuse", domainconfig.PatchOp{Path: "codex.identity-confuse", Value: boolValue}, false, false},
+		{"codex identity confuse wrong type", domainconfig.PatchOp{Path: "codex.identity-confuse", Value: "true"}, true, false},
+		{"passthrough headers", domainconfig.PatchOp{Path: "passthrough-headers", Value: boolValue}, false, false},
+		{"commercial mode", domainconfig.PatchOp{Path: "commercial-mode", Value: false}, false, false},
+		{"debug", domainconfig.PatchOp{Path: "debug", Value: boolValue}, false, false},
+		{"debug wrong type", domainconfig.PatchOp{Path: "debug", Value: 1}, true, false},
+		{"logging to file", domainconfig.PatchOp{Path: "logging-to-file", Value: boolValue}, false, false},
+		{"usage statistics", domainconfig.PatchOp{Path: "usage-statistics-enabled", Value: false}, false, false},
+		{"request log", domainconfig.PatchOp{Path: "request-log", Value: boolValue}, false, false},
+		{"force model prefix", domainconfig.PatchOp{Path: "force-model-prefix", Value: false}, false, false},
+		{"disable cooling", domainconfig.PatchOp{Path: "disable-cooling", Value: boolValue}, false, false},
+		{"save cooldown status", domainconfig.PatchOp{Path: "save-cooldown-status", Value: boolValue}, false, false},
+		{"disable claude cloak mode", domainconfig.PatchOp{Path: "disable-claude-cloak-mode", Value: false}, false, false},
+		{"disable claude cloak mode wrong type", domainconfig.PatchOp{Path: "disable-claude-cloak-mode", Value: "no"}, true, false},
+		// proxy-url
+		{"proxy url http", domainconfig.PatchOp{Path: "proxy-url", Value: "http://proxy.internal:3128"}, false, false},
+		{"proxy url https", domainconfig.PatchOp{Path: "proxy-url", Value: "https://user:pass@proxy.internal:8443"}, false, false},
+		{"proxy url socks5", domainconfig.PatchOp{Path: "proxy-url", Value: "socks5://127.0.0.1:1080"}, false, false},
+		{"proxy url empty", domainconfig.PatchOp{Path: "proxy-url", Value: ""}, false, false},
+		{"proxy url relative", domainconfig.PatchOp{Path: "proxy-url", Value: "proxy.internal:3128"}, true, false},
+		{"proxy url bad scheme", domainconfig.PatchOp{Path: "proxy-url", Value: "ftp://proxy.internal:21"}, true, false},
+		{"proxy url wrong type", domainconfig.PatchOp{Path: "proxy-url", Value: 3128}, true, false},
+		// disable-image-generation union
+		{"image generation bool", domainconfig.PatchOp{Path: "disable-image-generation", Value: boolValue}, false, false},
+		{"image generation chat", domainconfig.PatchOp{Path: "disable-image-generation", Value: "chat"}, false, false},
+		{"image generation passthrough", domainconfig.PatchOp{Path: "disable-image-generation", Value: "passthrough"}, false, false},
+		{"image generation bad enum", domainconfig.PatchOp{Path: "disable-image-generation", Value: "off"}, true, false},
+		{"image generation wrong type", domainconfig.PatchOp{Path: "disable-image-generation", Value: 1}, true, false},
+		// durations
+		{"video cache ttl", domainconfig.PatchOp{Path: "video-result-auth-cache-ttl", Value: "24h"}, false, false},
+		{"video cache ttl invalid", domainconfig.PatchOp{Path: "video-result-auth-cache-ttl", Value: "forever"}, true, false},
+		// remote management panel repository
+		{"panel github repository", domainconfig.PatchOp{Path: "remote-management.panel-github-repository", Value: "owner/repo"}, false, false},
+		{"panel github repository wrong type", domainconfig.PatchOp{Path: "remote-management.panel-github-repository", Value: 7}, true, false},
+		// payload sequences
+		{"payload rules", domainconfig.PatchOp{Path: "payload", Value: []any{map[string]any{"models": []any{"gpt-5"}}}}, false, false},
+		{"payload wrong type", domainconfig.PatchOp{Path: "payload", Value: map[string]any{}}, true, false},
+		{"payload default", domainconfig.PatchOp{Path: "payload.default", Value: []any{}}, false, false},
+		{"payload default wrong type", domainconfig.PatchOp{Path: "payload.default", Value: "rule"}, true, false},
+		{"payload default raw", domainconfig.PatchOp{Path: "payload.default-raw", Value: []any{map[string]any{"op": "set"}}}, false, false},
+		{"payload override", domainconfig.PatchOp{Path: "payload.override", Value: []any{}}, false, false},
+		{"payload override raw", domainconfig.PatchOp{Path: "payload.override-raw", Value: []any{}}, false, false},
+		{"payload filter", domainconfig.PatchOp{Path: "payload.filter", Value: []any{"thinking"}}, false, false},
+		{"payload filter wrong type", domainconfig.PatchOp{Path: "payload.filter", Value: 3}, true, false},
+		// pprof is restart-required
+		{"pprof", domainconfig.PatchOp{Path: "pprof", Value: boolValue}, false, true},
+		{"pprof wrong type", domainconfig.PatchOp{Path: "pprof", Value: "true"}, true, true},
+		{"pprof enable", domainconfig.PatchOp{Path: "pprof.enable", Value: boolValue}, false, true},
+		{"pprof enable wrong type", domainconfig.PatchOp{Path: "pprof.enable", Value: 1}, true, true},
+		{"pprof addr", domainconfig.PatchOp{Path: "pprof.addr", Value: "127.0.0.1:6060"}, false, true},
+		{"pprof addr missing port", domainconfig.PatchOp{Path: "pprof.addr", Value: "127.0.0.1"}, true, true},
+		{"pprof addr wrong type", domainconfig.PatchOp{Path: "pprof.addr", Value: 6060}, true, true},
+		// header-defaults subtrees are hot-reloaded
+		{"claude header defaults root", domainconfig.PatchOp{Path: "claude-header-defaults", Value: map[string]any{"x-anthropic-beta": "oauth"}}, false, false},
+		{"claude header defaults subtree", domainconfig.PatchOp{Path: "claude-header-defaults.x-api-key", Value: "value"}, false, false},
+		{"codex header defaults root", domainconfig.PatchOp{Path: "codex-header-defaults", Value: map[string]any{"originator": "pmux"}}, false, false},
+		{"codex header defaults subtree", domainconfig.PatchOp{Path: "codex-header-defaults.session_id", Value: "abc"}, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := writeFixture(t, secureConfig(t, "8317"))
+			adapter := New(filepath.Join(t.TempDir(), "backups"))
+			snapshot, err := adapter.Read(context.Background(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := adapter.Plan(context.Background(), snapshot, []domainconfig.PatchOp{tt.op})
+			if tt.wantErr {
+				assertPMuxCode(t, err, pmuxerr.ConfigValidationFailed)
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if plan.RestartRequired != tt.wantRestart {
+				t.Fatalf("RestartRequired = %v, want %v", plan.RestartRequired, tt.wantRestart)
+			}
+		})
+	}
+}
+
+func TestPlanRejectsUnknownExtendedPaths(t *testing.T) {
+	for _, path := range []string{
+		"routing.unknown",
+		"quota-exceeded.unknown",
+		"streaming.unknown",
+		"payload.default.0",
+		"payload.unknown",
+		"pprof.extra",
+		"codex.unknown",
+		"header-defaults",
+	} {
+		t.Run(path, func(t *testing.T) {
+			fixture := writeFixture(t, secureConfig(t, "8317"))
+			adapter := New(filepath.Join(t.TempDir(), "backups"))
+			snapshot, err := adapter.Read(context.Background(), fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = adapter.Plan(context.Background(), snapshot, []domainconfig.PatchOp{{Path: path, Value: true}})
+			assertPMuxCode(t, err, pmuxerr.ConfigValidationFailed)
+		})
+	}
+}
+
+func TestPlanUnsetExtendedPaths(t *testing.T) {
+	// Unset skips value validation for every known path, including new ones.
+	for _, path := range []string{
+		"routing.strategy", "quota-exceeded.switch-project", "request-retry",
+		"proxy-url", "payload.default", "pprof.addr", "claude-header-defaults.x",
+	} {
+		t.Run(path, func(t *testing.T) {
+			fixture := writeFixture(t, secureConfig(t, "8317"))
+			adapter := New(filepath.Join(t.TempDir(), "backups"))
+			snapshot, err := adapter.Read(context.Background(), fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan, err := adapter.Plan(context.Background(), snapshot, []domainconfig.PatchOp{{Path: path, Unset: true}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantRestart := strings.HasPrefix(path, "pprof")
+			if plan.RestartRequired != wantRestart {
+				t.Fatalf("RestartRequired = %v, want %v", plan.RestartRequired, wantRestart)
+			}
+		})
+	}
+}
+
 func TestReadRejectsDuplicateMappingKeys(t *testing.T) {
 	path := writeFixture(t, secureConfig(t, "8317")+"port: 9000\n")
 	_, err := New(filepath.Join(t.TempDir(), "backups")).Read(context.Background(), path)

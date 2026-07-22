@@ -20,6 +20,9 @@ type Facade interface {
 type ActionRequest struct {
 	ID        ActionID
 	Arguments []string
+	// Options carries small presentation-safe selections that are not
+	// positional arguments, such as the chosen launch client.
+	Options map[string]string
 	// Secret is an ephemeral protected input. Facades must consume and clear it;
 	// it is never copied into snapshots, events, state, logs, or output.
 	Secret []byte
@@ -97,6 +100,7 @@ type ModelRow struct {
 }
 
 type LaunchSnapshot struct {
+	Client        string
 	ClientPath    string
 	ClientVersion string
 	ModelID       string

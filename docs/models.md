@@ -54,6 +54,24 @@ Unknown IDs fail with a refresh instruction:
 Model '<id>' is not in the current catalog; run "pmux models list --refresh".
 ```
 
+## Aliases and exclusions
+
+CLIProxyAPI can rename or hide OAuth-channel models. PMux manages both maps through the Management API; channels are `aistudio`, `antigravity`, `claude`, `codex`, `kimi`, `vertex`, and `xai`.
+
+```sh
+pmux models aliases
+pmux models aliases set <channel> <alias> <exact-model-id>
+pmux models aliases remove <channel> <alias>
+pmux models aliases clear <channel>
+
+pmux models exclusions
+pmux models exclusions add <channel> <exact-or-wildcard-pattern>
+pmux models exclusions remove <channel> <pattern>
+pmux models exclusions clear <channel>
+```
+
+An alias maps a display name to an exact served model ID; PMux does not validate the target beyond non-emptiness because the core owns the namespace. Exclusion patterns are exact strings or `*` wildcards evaluated by the core. Mutations require confirmation or global `--yes` and hot-reload without a service restart. Aliases apply to OAuth channels only; API-key providers use their own per-entry `models[].alias` fields in the proxy config file.
+
 ## Minimal model test
 
 ```sh
