@@ -407,34 +407,6 @@ func writeAtomic(path string, body []byte, mode os.FileMode) error {
 	return syncDir(filepath.Dir(path))
 }
 
-func writeExclusive(path string, body []byte, mode os.FileMode) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
-	if err != nil {
-		return err
-	}
-	ok := false
-	defer func() {
-		_ = file.Close()
-		if !ok {
-			_ = os.Remove(path)
-		}
-	}()
-	if _, err := file.Write(body); err != nil {
-		return err
-	}
-	if err := file.Sync(); err != nil {
-		return err
-	}
-	if err := file.Close(); err != nil {
-		return err
-	}
-	ok = true
-	return syncDir(filepath.Dir(path))
-}
-
 func syncDir(path string) error {
 	if os.PathSeparator == '\\' {
 		return nil
