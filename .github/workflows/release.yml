@@ -19,6 +19,9 @@ jobs:
           fetch-tags: true
       - name: Verify signed tag
         run: |
+          if [[ -f .github/release-key.asc ]]; then
+            gpg --import .github/release-key.asc
+          fi
           git fetch origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
           git verify-tag "$GITHUB_REF_NAME"
 
