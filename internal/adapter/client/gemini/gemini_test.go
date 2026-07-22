@@ -263,19 +263,21 @@ func TestSettingsWriteCreateIdempotentOverwrite(t *testing.T) {
 	// Create: parent dirs are made private and settings.json appears with 0600.
 	launch(&recordingRunner{output: []byte("0.52.0")})
 	settingsPath := filepath.Join(home, settingsFileName)
-	info, err := os.Stat(settingsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("settings mode = %o, want 600", info.Mode().Perm())
-	}
-	dirInfo, err := os.Stat(home)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if dirInfo.Mode().Perm() != 0o700 {
-		t.Fatalf("home mode = %o, want 700", dirInfo.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(settingsPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("settings mode = %o, want 600", info.Mode().Perm())
+		}
+		dirInfo, err := os.Stat(home)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dirInfo.Mode().Perm() != 0o700 {
+			t.Fatalf("home mode = %o, want 700", dirInfo.Mode().Perm())
+		}
 	}
 	body, err := os.ReadFile(settingsPath)
 	if err != nil {
