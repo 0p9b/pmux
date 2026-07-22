@@ -168,6 +168,7 @@ jobs:
             extension: tar.gz
           - target: darwin-amd64
             runner: macos-15-intel
+            os: darwin
             arch: amd64
             extension: tar.gz
           - target: darwin-arm64
